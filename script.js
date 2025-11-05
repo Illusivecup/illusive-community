@@ -10,36 +10,55 @@ class IllusiveApp {
         
         // Привязываем контекст для всех методов
         this.init = this.init.bind(this);
-        // ... остальные привязки
+        this.setupEventListeners = this.setupEventListeners.bind(this);
+        this.setupAuthStateListener = this.setupAuthStateListener.bind(this);
+        this.showSection = this.showSection.bind(this);
+        this.hideAllSections = this.hideAllSections.bind(this);
+        this.loginUser = this.loginUser.bind(this);
+        this.registerUser = this.registerUser.bind(this);
+        this.logoutUser = this.logoutUser.bind(this);
+        this.saveProfile = this.saveProfile.bind(this);
+        this.uploadAvatar = this.uploadAvatar.bind(this);
     }
 
     initializeFirebaseMethods() {
-        // Создаем удобные алиасы для Firebase методов
+        // Проверяем, что Firebase загружен
+        if (typeof firebase === 'undefined') {
+            console.error('❌ Firebase not loaded');
+            return;
+        }
+
+        // Создаем удобные алиасы для Firebase методов (версия 9.x)
         this.firebase = {
+            // App
+            app: firebase.app,
+            
             // Auth methods
-            auth: firebase.auth(),
-            createUserWithEmailAndPassword: firebase.auth.createUserWithEmailAndPassword,
-            signInWithEmailAndPassword: firebase.auth.signInWithEmailAndPassword,
-            signOut: firebase.auth.signOut,
-            onAuthStateChanged: firebase.auth.onAuthStateChanged,
+            auth: firebase.auth,
+            createUserWithEmailAndPassword: firebase.auth().createUserWithEmailAndPassword,
+            signInWithEmailAndPassword: firebase.auth().signInWithEmailAndPassword,
+            signOut: firebase.auth().signOut,
+            onAuthStateChanged: firebase.auth().onAuthStateChanged,
             
             // Database methods
-            database: firebase.database(),
-            ref: firebase.database.ref,
-            set: firebase.database.set,
-            get: firebase.database.get,
-            update: firebase.database.update,
-            push: firebase.database.push,
-            onValue: firebase.database.onValue,
-            off: firebase.database.off,
-            remove: firebase.database.remove,
+            database: firebase.database,
+            ref: firebase.database().ref,
+            set: (ref, data) => ref.set(data),
+            get: (ref) => ref.get(),
+            update: (ref, data) => ref.update(data),
+            push: (ref) => ref.push(),
+            onValue: (ref, callback) => ref.on('value', callback),
+            off: (ref, eventType, callback) => ref.off(eventType, callback),
+            remove: (ref) => ref.remove(),
             
             // Storage methods
-            storage: firebase.storage(),
-            storageRef: firebase.storage.ref,
-            uploadBytes: firebase.storage.uploadBytes,
-            getDownloadURL: firebase.storage.getDownloadURL
+            storage: firebase.storage,
+            storageRef: firebase.storage().ref,
+            uploadBytes: (ref, file) => ref.put(file),
+            getDownloadURL: (ref) => ref.getDownloadURL()
         };
+
+        console.log('✅ Firebase methods initialized');
     }
 
     async init() {
