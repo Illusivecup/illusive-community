@@ -1,26 +1,48 @@
 // === Illusive Community App ===
-// Полностью переписанная версия без конфликтов
-
 class IllusiveApp {
     constructor() {
         this.currentUser = null;
         this.userProfile = null;
         this.isInitialized = false;
         
+        // Инициализируем Firebase методы
+        this.initializeFirebaseMethods();
+        
         // Привязываем контекст для всех методов
         this.init = this.init.bind(this);
-        this.setupEventListeners = this.setupEventListeners.bind(this);
-        this.setupAuthStateListener = this.setupAuthStateListener.bind(this);
-        this.showSection = this.showSection.bind(this);
-        this.hideAllSections = this.hideAllSections.bind(this);
-        this.loginUser = this.loginUser.bind(this);
-        this.registerUser = this.registerUser.bind(this);
-        this.logoutUser = this.logoutUser.bind(this);
-        this.saveProfile = this.saveProfile.bind(this);
-        this.uploadAvatar = this.uploadAvatar.bind(this);
+        // ... остальные привязки
     }
 
-    async init() {  // ДОБАВЛЕНО async
+    initializeFirebaseMethods() {
+        // Создаем удобные алиасы для Firebase методов
+        this.firebase = {
+            // Auth methods
+            auth: firebase.auth(),
+            createUserWithEmailAndPassword: firebase.auth.createUserWithEmailAndPassword,
+            signInWithEmailAndPassword: firebase.auth.signInWithEmailAndPassword,
+            signOut: firebase.auth.signOut,
+            onAuthStateChanged: firebase.auth.onAuthStateChanged,
+            
+            // Database methods
+            database: firebase.database(),
+            ref: firebase.database.ref,
+            set: firebase.database.set,
+            get: firebase.database.get,
+            update: firebase.database.update,
+            push: firebase.database.push,
+            onValue: firebase.database.onValue,
+            off: firebase.database.off,
+            remove: firebase.database.remove,
+            
+            // Storage methods
+            storage: firebase.storage(),
+            storageRef: firebase.storage.ref,
+            uploadBytes: firebase.storage.uploadBytes,
+            getDownloadURL: firebase.storage.getDownloadURL
+        };
+    }
+
+    async init() {
         if (this.isInitialized) {
             console.log('🛑 App already initialized');
             return;
@@ -29,7 +51,7 @@ class IllusiveApp {
         try {
             console.log('🚀 Инициализация Illusive Community...');
             
-            // Ждем загрузку Firebase
+            // Проверяем загрузку Firebase
             await this.waitForFirebase();
             
             this.createAnimatedBackground();
@@ -49,11 +71,11 @@ class IllusiveApp {
         }
     }
 
-    async waitForFirebase() {  // ДОБАВЛЕНО async
+    async waitForFirebase() {
         return new Promise((resolve, reject) => {
             const checkFirebase = () => {
-                if (window.firebase && window.firebase.auth) {
-                    console.log('✅ Firebase loaded');
+                if (typeof firebase !== 'undefined' && firebase.app) {
+                    console.log('✅ Firebase loaded successfully');
                     resolve();
                 } else {
                     console.log('⏳ Waiting for Firebase...');
@@ -61,6 +83,7 @@ class IllusiveApp {
                 }
             };
             
+            // Таймаут 10 секунд
             setTimeout(() => {
                 reject(new Error('Firebase loading timeout'));
             }, 10000);
@@ -68,6 +91,9 @@ class IllusiveApp {
             checkFirebase();
         });
     }
+
+    // ... остальные методы остаются без изменений
+
 
     setupNavigation() {
         const teamsListBtn = document.getElementById('teamsListBtn');
