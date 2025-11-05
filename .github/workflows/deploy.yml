@@ -11,17 +11,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Create Complete Firebase Config
+      - name: Create Firebase Config
         run: |
-          echo " Creating firebase-config.js for GitHub Pages..."
-          cat > firebase-config.js << "ENDFILE"
+          cat > firebase-config.js << "EOF"
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref, set, get, update, push, onValue, off, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// Your web app'"'"'s Firebase configuration
+// Your web apps Firebase configuration
 const firebaseConfig = {
   apiKey: "${{ secrets.FIREBASE_API_KEY }}",
   authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
@@ -60,9 +59,8 @@ window.firebase = {
     onAuthStateChanged
 };
 
-console.log(" Firebase успешно инициализирован на GitHub Pages");
-ENDFILE
-          echo " firebase-config.js created successfully"
+console.log("Firebase initialized on GitHub Pages");
+EOF
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
