@@ -520,414 +520,423 @@ async saveProfile() {
 }
 
     // === СИСТЕМА ДРУЗЕЙ ===
-    async loadFriendsList() {
-        if (!this.currentUser || !this.userProfile) {
-            document.getElementById('friendsList').innerHTML = '<div class="no-data">Для просмотра друзей необходимо авторизоваться</div>';
-            return;
-        }
-        
-        if (!this.userProfile.friends || this.userProfile.friends.length === 0) {
-            document.getElementById('friendsList').innerHTML = '<div class="no-data">У вас пока нет друзей</div>';
-            return;
-        }
-        
-        const friendsList = document.getElementById('friendsList');
-        let friendsHTML = '';
-        
-        try {
-            const friendPromises = this.userProfile.friends.map(async (friendId) => {
-                try {
-                    const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `users/${friendId}`));
-                    if (snapshot.exists()) {
-                        const friend = snapshot.val();
-                        const isOnline = friend.lastOnline && (Date.now() - friend.lastOnline < 300000);
-                        
-                        return `
-                            <div class="friend-card">
-                                <div class="friend-info">
-                                    <div class="member-avatar">
-                                        ${friend.avatarUrl ? 
-                                            `<img src="${friend.avatarUrl}" alt="Аватар" style="width: 100%; height: 100%; border-radius: 50%;">` : 
-                                            '👤'
-                                        }
-                                    </div>
-                                    <div>
-                                        <h4>${friend.nickname || friend.username || 'Неизвестный пользователь'}</h4>
-                                        <p>${friend.position ? this.getPositionName(friend.position) : 'Позиция не указана'} | MMR: ${friend.mmr || 0}</p>
-                                        <p>Telegram: ${friend.telegram || 'Не указан'}</p>
-                                    </div>
-                                </div>
-                                <div class="friend-status">
-                                    <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></span>
-                                    <span>${isOnline ? 'Онлайн' : 'Оффлайн'}</span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    return '';
-                } catch (error) {
-                    console.error(`❌ Ошибка загрузки информации о друге ${friendId}:`, error);
-                    return '';
-                }
-            });
-            
-            const friendElements = await Promise.all(friendPromises);
-            friendsHTML = friendElements.filter(html => html !== '').join('');
-            
-        } catch (error) {
-            console.error('❌ Ошибка загрузки списка друзей:', error);
-            friendsHTML = '<div class="no-data">Ошибка загрузки списка друзей</div>';
-        }
-        
-        friendsList.innerHTML = friendsHTML || '<div class="no-data">У вас пока нет друзей</div>';
+async loadFriendsList() {
+    if (!this.currentUser || !this.userProfile) {
+        document.getElementById('friendsList').innerHTML = '<div class="no-data">Для просмотра друзей необходимо авторизоваться</div>';
+        return;
     }
-
-    async searchFriends() {
-        if (!this.currentUser) {
-            alert('❌ Для поиска друзей необходимо авторизоваться');
-            return;
-        }
-        
-        const searchTerm = document.getElementById('friendSearch').value.trim();
-        const searchType = document.getElementById('friendSearchType').value;
-        
-        if (!searchTerm) {
-            alert('❌ Введите данные для поиска');
-            return;
-        }
-        
-        try {
-            const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'users'));
-            const resultsContainer = document.getElementById('friendSearchResults');
-            let resultsHTML = '';
-            let found = false;
-            
-            if (snapshot.exists()) {
-                const users = snapshot.val();
-                
-                Object.entries(users).forEach(([userId, user]) => {
-                    if (userId === this.currentUser.uid) return;
+    
+    if (!this.userProfile.friends || this.userProfile.friends.length === 0) {
+        document.getElementById('friendsList').innerHTML = '<div class="no-data">У вас пока нет друзей</div>';
+        return;
+    }
+    
+    const friendsList = document.getElementById('friendsList');
+    let friendsHTML = '';
+    
+    try {
+        const friendPromises = this.userProfile.friends.map(async (friendId) => {
+            try {
+                // Используем this.firebase вместо window.firebase
+                const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `users/${friendId}`));
+                if (snapshot.exists()) {
+                    const friend = snapshot.val();
+                    const isOnline = friend.lastOnline && (Date.now() - friend.lastOnline < 300000);
                     
-                    let match = false;
-                    
-                    switch(searchType) {
-                        case 'nickname':
-                            match = user.nickname && user.nickname.toLowerCase().includes(searchTerm.toLowerCase());
-                            break;
-                        case 'telegram':
-                            match = user.telegram && user.telegram.toLowerCase().includes(searchTerm.toLowerCase());
-                            break;
-                        case 'userId':
-                            match = userId === searchTerm || user.userId === searchTerm;
-                            break;
-                    }
-                    
-                    if (match) {
-                        found = true;
-                        const isAlreadyFriend = this.userProfile.friends && this.userProfile.friends.includes(userId);
-                        const isOnline = user.lastOnline && (Date.now() - user.lastOnline < 300000);
-                        
-                        resultsHTML += `
-                            <div class="search-result-item">
-                                <div class="friend-info">
-                                    <div class="member-avatar">
-                                        ${user.avatarUrl ? 
-                                            `<img src="${user.avatarUrl}" alt="Аватар" style="width: 100%; height: 100%; border-radius: 50%;">` : 
-                                            '👤'
-                                        }
-                                    </div>
-                                    <div>
-                                        <h4>${user.nickname || user.username}</h4>
-                                        <p>Telegram: ${user.telegram || 'Не указан'} | MMR: ${user.mmr || 0}</p>
-                                        <div class="friend-status">
-                                            <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></span>
-                                            <span>${isOnline ? 'Онлайн' : 'Оффлайн'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    ${isAlreadyFriend ? 
-                                        '<span class="add-btn" style="background: var(--accent-success);">✓ Друг</span>' :
-                                        `<button class="add-btn" onclick="app.sendFriendRequest('${userId}')">👥 Добавить в друзья</button>`
+                    return `
+                        <div class="friend-card">
+                            <div class="friend-info">
+                                <div class="member-avatar">
+                                    ${friend.avatarUrl ? 
+                                        `<img src="${friend.avatarUrl}" alt="Аватар" style="width: 100%; height: 100%; border-radius: 50%;">` : 
+                                        '👤'
                                     }
                                 </div>
+                                <div>
+                                    <h4>${friend.nickname || friend.username || 'Неизвестный пользователь'}</h4>
+                                    <p>${friend.position ? this.getPositionName(friend.position) : 'Позиция не указана'} | MMR: ${friend.mmr || 0}</p>
+                                    <p>Telegram: ${friend.telegram || 'Не указан'}</p>
+                                </div>
                             </div>
-                        `;
-                    }
-                });
+                            <div class="friend-status">
+                                <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></span>
+                                <span>${isOnline ? 'Онлайн' : 'Оффлайн'}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                return '';
+            } catch (error) {
+                console.error(`❌ Ошибка загрузки информации о друге ${friendId}:`, error);
+                return '';
             }
+        });
+        
+        const friendElements = await Promise.all(friendPromises);
+        friendsHTML = friendElements.filter(html => html !== '').join('');
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки списка друзей:', error);
+        friendsHTML = '<div class="no-data">Ошибка загрузки списка друзей</div>';
+    }
+    
+    friendsList.innerHTML = friendsHTML || '<div class="no-data">У вас пока нет друзей</div>';
+}
+
+async searchFriends() {
+    if (!this.currentUser) {
+        alert('❌ Для поиска друзей необходимо авторизоваться');
+        return;
+    }
+    
+    const searchTerm = document.getElementById('friendSearch').value.trim();
+    const searchType = document.getElementById('friendSearchType').value;
+    
+    if (!searchTerm) {
+        alert('❌ Введите данные для поиска');
+        return;
+    }
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, 'users'));
+        const resultsContainer = document.getElementById('friendSearchResults');
+        let resultsHTML = '';
+        let found = false;
+        
+        if (snapshot.exists()) {
+            const users = snapshot.val();
             
-            if (!found) {
-                resultsHTML = '<div class="no-data">Пользователь не найден</div>';
+            Object.entries(users).forEach(([userId, user]) => {
+                if (userId === this.currentUser.uid) return;
+                
+                let match = false;
+                
+                switch(searchType) {
+                    case 'nickname':
+                        match = user.nickname && user.nickname.toLowerCase().includes(searchTerm.toLowerCase());
+                        break;
+                    case 'telegram':
+                        match = user.telegram && user.telegram.toLowerCase().includes(searchTerm.toLowerCase());
+                        break;
+                    case 'userId':
+                        match = userId === searchTerm || user.userId === searchTerm;
+                        break;
+                }
+                
+                if (match) {
+                    found = true;
+                    const isAlreadyFriend = this.userProfile.friends && this.userProfile.friends.includes(userId);
+                    const isOnline = user.lastOnline && (Date.now() - user.lastOnline < 300000);
+                    
+                    resultsHTML += `
+                        <div class="search-result-item">
+                            <div class="friend-info">
+                                <div class="member-avatar">
+                                    ${user.avatarUrl ? 
+                                        `<img src="${user.avatarUrl}" alt="Аватар" style="width: 100%; height: 100%; border-radius: 50%;">` : 
+                                        '👤'
+                                    }
+                                </div>
+                                <div>
+                                    <h4>${user.nickname || user.username}</h4>
+                                    <p>Telegram: ${user.telegram || 'Не указан'} | MMR: ${user.mmr || 0}</p>
+                                    <div class="friend-status">
+                                        <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></span>
+                                        <span>${isOnline ? 'Онлайн' : 'Оффлайн'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                ${isAlreadyFriend ? 
+                                    '<span class="add-btn" style="background: var(--accent-success);">✓ Друг</span>' :
+                                    `<button class="add-btn" onclick="app.sendFriendRequest('${userId}')">👥 Добавить в друзья</button>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        if (!found) {
+            resultsHTML = '<div class="no-data">Пользователь не найден</div>';
+        }
+        
+        resultsContainer.innerHTML = resultsHTML;
+        
+    } catch (error) {
+        console.error('❌ Ошибка поиска друзей:', error);
+        alert('❌ Ошибка поиска друзей');
+    }
+}
+
+async sendFriendRequest(toUserId) {
+    if (!this.currentUser) return;
+    
+    const notificationId = `notification_${Date.now()}`;
+    const notificationData = {
+        type: 'friend_request',
+        fromUserId: this.currentUser.uid,
+        fromUserName: this.userProfile.nickname || this.userProfile.username,
+        message: `${this.userProfile.nickname || this.userProfile.username} хочет добавить вас в друзья`,
+        timestamp: Date.now(),
+        read: false,
+        responded: false
+    };
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${toUserId}/${notificationId}`), notificationData);
+        await this.limitNotifications(toUserId);
+        alert('✅ Запрос дружбы отправлен!');
+    } catch (error) {
+        console.error('❌ Ошибка отправки запроса дружбы:', error);
+        alert('❌ Ошибка отправки запроса дружбы');
+    }
+}
+
+    // === СИСТЕМА КОМАНД ===
+async loadTeamsList() {
+    try {
+        console.log('🔄 Загрузка списка команд...');
+        
+        if (!this.currentUser) {
+            const fullTeamsContainer = document.getElementById('fullTeamsList');
+            const incompleteTeamsContainer = document.getElementById('incompleteTeamsList');
+            fullTeamsContainer.innerHTML = '<div class="no-data">Для просмотра команд необходимо авторизоваться</div>';
+            incompleteTeamsContainer.innerHTML = '<div class="no-data">Для просмотра команд необходимо авторизоваться</div>';
+            return;
+        }
+
+        // Используем this.firebase вместо window.firebase
+        const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, 'teams'));
+        const fullTeamsContainer = document.getElementById('fullTeamsList');
+        const incompleteTeamsContainer = document.getElementById('incompleteTeamsList');
+        
+        if (!snapshot.exists()) {
+            fullTeamsContainer.innerHTML = '<div class="no-data">Нет созданных команд</div>';
+            incompleteTeamsContainer.innerHTML = '<div class="no-data">Нет команд с неполным составом</div>';
+            return;
+        }
+        
+        const teams = snapshot.val();
+        let fullTeamsHTML = '';
+        let incompleteTeamsHTML = '';
+        
+        for (const [teamId, team] of Object.entries(teams)) {
+            try {
+                const teamCard = await this.createTeamCard(teamId, team);
+                const memberCount = Object.keys(team.members || {}).length;
+                const isFullTeam = memberCount >= 5;
+                
+                if (isFullTeam) {
+                    fullTeamsHTML += teamCard;
+                } else {
+                    incompleteTeamsHTML += teamCard;
+                }
+            } catch (error) {
+                console.error(`❌ Ошибка создания карточки команды ${teamId}:`, error);
             }
-            
-            resultsContainer.innerHTML = resultsHTML;
-            
-        } catch (error) {
-            console.error('❌ Ошибка поиска друзей:', error);
-            alert('❌ Ошибка поиска друзей');
+        }
+        
+        fullTeamsContainer.innerHTML = fullTeamsHTML || '<div class="no-data">Нет команд с полным составом</div>';
+        incompleteTeamsContainer.innerHTML = incompleteTeamsHTML || '<div class="no-data">Нет команд с неполным составом</div>';
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки списка команд:', error);
+        const fullTeamsContainer = document.getElementById('fullTeamsList');
+        const incompleteTeamsContainer = document.getElementById('incompleteTeamsList');
+        
+        let errorMessage = 'Ошибка загрузки команд';
+        if (error.code === 'PERMISSION_DENIED') {
+            errorMessage = 'Нет доступа к списку команд. Проверьте авторизацию.';
+        }
+        
+        fullTeamsContainer.innerHTML = `<div class="no-data">${errorMessage}</div>`;
+        incompleteTeamsContainer.innerHTML = `<div class="no-data">${errorMessage}</div>`;
+    }
+}
+
+async createTeamCard(teamId, team) {
+    const memberCount = Object.keys(team.members || {}).length;
+    const maxMembers = 5;
+    const isFull = memberCount >= maxMembers;
+    
+    let captainName = 'Неизвестно';
+    try {
+        // Используем this.firebase вместо window.firebase
+        const captainSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `users/${team.captain}`));
+        if (captainSnapshot.exists()) {
+            const captain = captainSnapshot.val();
+            captainName = captain.nickname || captain.username;
+        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки информации о капитане:', error);
+    }
+    
+    let hasApplied = false;
+    if (this.currentUser) {
+        // Используем this.firebase вместо window.firebase
+        const applicationsSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teamApplications/${teamId}`));
+        if (applicationsSnapshot.exists()) {
+            const applications = applicationsSnapshot.val();
+            hasApplied = Object.values(applications).some(app => app.userId === this.currentUser.uid && !app.responded);
         }
     }
+    
+    return `
+        <div class="team-mini-card">
+            <div class="team-mini-header">
+                <h4>${team.name}</h4>
+                <span class="team-status ${isFull ? 'status-full' : 'status-open'}">
+                    ${isFull ? '✅ Полный состав' : '🟢 Ищут игроков'}
+                </span>
+            </div>
+            <div class="team-mini-info">
+                <p><strong>Слоган:</strong> ${team.slogan || 'Без слогана'}</p>
+                <p><strong>Капитан:</strong> <span class="clickable-nickname" onclick="app.viewUserProfile('${team.captain}')">${captainName}</span></p>
+                <p><strong>Состав:</strong> ${memberCount}/${maxMembers} игроков</p>
+                <p><strong>Средний MMR:</strong> ${team.averageMMR || 0}</p>
+            </div>
+            <div class="team-mini-actions">
+                ${!isFull && this.currentUser && !hasApplied && (!this.userProfile.teamId || this.userProfile.teamId !== teamId) ? 
+                    `<button class="add-btn" onclick="app.applyToTeam('${teamId}')">📨 Подать заявку</button>` : 
+                    ''
+                }
+                ${hasApplied ? 
+                    '<span class="add-btn" style="background: var(--accent-warning);">⏳ Заявка отправлена</span>' : 
+                    ''
+                }
+                ${this.currentUser && this.userProfile.teamId === teamId ? 
+                    '<span class="add-btn" style="background: var(--accent-success);">✅ Ваша команда</span>' : 
+                    ''
+                }
+            </div>
+        </div>
+    `;
+}
 
-    async sendFriendRequest(toUserId) {
-        if (!this.currentUser) return;
-        
-        const notificationId = `notification_${Date.now()}`;
-        const notificationData = {
-            type: 'friend_request',
-            fromUserId: this.currentUser.uid,
-            fromUserName: this.userProfile.nickname || this.userProfile.username,
-            message: `${this.userProfile.nickname || this.userProfile.username} хочет добавить вас в друзья`,
+async applyToTeam(teamId) {
+    if (!this.currentUser) {
+        alert('❌ Вы не авторизованы');
+        return;
+    }
+    
+    if (this.userProfile.teamId) {
+        alert('❌ Вы уже состоите в команде');
+        return;
+    }
+    
+    try {
+        const applicationId = `application_${Date.now()}`;
+        const applicationData = {
+            userId: this.currentUser.uid,
+            userNickname: this.userProfile.nickname || this.userProfile.username,
+            userMMR: this.userProfile.mmr || 0,
+            userPosition: this.userProfile.position || '',
+            teamId: teamId,
             timestamp: Date.now(),
-            read: false,
             responded: false
         };
         
-        try {
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${toUserId}/${notificationId}`), notificationData);
-            await this.limitNotifications(toUserId);
-            alert('✅ Запрос дружбы отправлен!');
-        } catch (error) {
-            console.error('❌ Ошибка отправки запроса дружбы:', error);
-            alert('❌ Ошибка отправки запроса дружбы');
-        }
-    }
-
-    // === СИСТЕМА КОМАНД ===
-    async loadTeamsList() {
-        try {
-            console.log('🔄 Загрузка списка команд...');
-            
-            if (!this.currentUser) {
-                const fullTeamsContainer = document.getElementById('fullTeamsList');
-                const incompleteTeamsContainer = document.getElementById('incompleteTeamsList');
-                fullTeamsContainer.innerHTML = '<div class="no-data">Для просмотра команд необходимо авторизоваться</div>';
-                incompleteTeamsContainer.innerHTML = '<div class="no-data">Для просмотра команд необходимо авторизоваться</div>';
-                return;
-            }
-
-            const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, 'teams'));
-            const fullTeamsContainer = document.getElementById('fullTeamsList');
-            const incompleteTeamsContainer = document.getElementById('incompleteTeamsList');
-            
-            if (!snapshot.exists()) {
-                fullTeamsContainer.innerHTML = '<div class="no-data">Нет созданных команд</div>';
-                incompleteTeamsContainer.innerHTML = '<div class="no-data">Нет команд с неполным составом</div>';
-                return;
-            }
-            
-            const teams = snapshot.val();
-            let fullTeamsHTML = '';
-            let incompleteTeamsHTML = '';
-            
-            for (const [teamId, team] of Object.entries(teams)) {
-                try {
-                    const teamCard = await this.createTeamCard(teamId, team);
-                    const memberCount = Object.keys(team.members || {}).length;
-                    const isFullTeam = memberCount >= 5;
-                    
-                    if (isFullTeam) {
-                        fullTeamsHTML += teamCard;
-                    } else {
-                        incompleteTeamsHTML += teamCard;
-                    }
-                } catch (error) {
-                    console.error(`❌ Ошибка создания карточки команды ${teamId}:`, error);
-                }
-            }
-            
-            fullTeamsContainer.innerHTML = fullTeamsHTML || '<div class="no-data">Нет команд с полным составом</div>';
-            incompleteTeamsContainer.innerHTML = incompleteTeamsHTML || '<div class="no-data">Нет команд с неполным составом</div>';
-            
-        } catch (error) {
-            console.error('❌ Ошибка загрузки списка команд:', error);
-            const fullTeamsContainer = document.getElementById('fullTeamsList');
-            const incompleteTeamsContainer = document.getElementById('incompleteTeamsList');
-            
-            let errorMessage = 'Ошибка загрузки команд';
-            if (error.code === 'PERMISSION_DENIED') {
-                errorMessage = 'Нет доступа к списку команд. Проверьте авторизацию.';
-            }
-            
-            fullTeamsContainer.innerHTML = `<div class="no-data">${errorMessage}</div>`;
-            incompleteTeamsContainer.innerHTML = `<div class="no-data">${errorMessage}</div>`;
-        }
-    }
-
-    async createTeamCard(teamId, team) {
-        const memberCount = Object.keys(team.members || {}).length;
-        const maxMembers = 5;
-        const isFull = memberCount >= maxMembers;
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `teamApplications/${teamId}/${applicationId}`), applicationData);
         
-        let captainName = 'Неизвестно';
-        try {
-            const captainSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `users/${team.captain}`));
-            if (captainSnapshot.exists()) {
-                const captain = captainSnapshot.val();
-                captainName = captain.nickname || captain.username;
-            }
-        } catch (error) {
-            console.error('❌ Ошибка загрузки информации о капитане:', error);
-        }
-        
-        let hasApplied = false;
-        if (this.currentUser) {
-            const applicationsSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teamApplications/${teamId}`));
-            if (applicationsSnapshot.exists()) {
-                const applications = applicationsSnapshot.val();
-                hasApplied = Object.values(applications).some(app => app.userId === this.currentUser.uid && !app.responded);
-            }
-        }
-        
-        return `
-            <div class="team-mini-card">
-                <div class="team-mini-header">
-                    <h4>${team.name}</h4>
-                    <span class="team-status ${isFull ? 'status-full' : 'status-open'}">
-                        ${isFull ? '✅ Полный состав' : '🟢 Ищут игроков'}
-                    </span>
-                </div>
-                <div class="team-mini-info">
-                    <p><strong>Слоган:</strong> ${team.slogan || 'Без слогана'}</p>
-                    <p><strong>Капитан:</strong> <span class="clickable-nickname" onclick="app.viewUserProfile('${team.captain}')">${captainName}</span></p>
-                    <p><strong>Состав:</strong> ${memberCount}/${maxMembers} игроков</p>
-                    <p><strong>Средний MMR:</strong> ${team.averageMMR || 0}</p>
-                </div>
-                <div class="team-mini-actions">
-                    ${!isFull && this.currentUser && !hasApplied && (!this.userProfile.teamId || this.userProfile.teamId !== teamId) ? 
-                        `<button class="add-btn" onclick="app.applyToTeam('${teamId}')">📨 Подать заявку</button>` : 
-                        ''
-                    }
-                    ${hasApplied ? 
-                        '<span class="add-btn" style="background: var(--accent-warning);">⏳ Заявка отправлена</span>' : 
-                        ''
-                    }
-                    ${this.currentUser && this.userProfile.teamId === teamId ? 
-                        '<span class="add-btn" style="background: var(--accent-success);">✅ Ваша команда</span>' : 
-                        ''
-                    }
-                </div>
-            </div>
-        `;
-    }
-
-    async applyToTeam(teamId) {
-        if (!this.currentUser) {
-            alert('❌ Вы не авторизованы');
-            return;
-        }
-        
-        if (this.userProfile.teamId) {
-            alert('❌ Вы уже состоите в команде');
-            return;
-        }
-        
-        try {
-            const applicationId = `application_${Date.now()}`;
-            const applicationData = {
-                userId: this.currentUser.uid,
-                userNickname: this.userProfile.nickname || this.userProfile.username,
-                userMMR: this.userProfile.mmr || 0,
-                userPosition: this.userProfile.position || '',
+        const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${teamId}`));
+        if (teamSnapshot.exists()) {
+            const team = teamSnapshot.val();
+            
+            const notificationId = `notification_${Date.now()}`;
+            const notificationData = {
+                type: 'team_application',
+                fromUserId: this.currentUser.uid,
+                fromUserName: this.userProfile.nickname || this.userProfile.username,
                 teamId: teamId,
+                teamName: team.name,
+                applicationId: applicationId,
+                message: `${this.userProfile.nickname || this.userProfile.username} подал заявку в вашу команду "${team.name}"`,
                 timestamp: Date.now(),
+                read: false,
                 responded: false
             };
             
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `teamApplications/${teamId}/${applicationId}`), applicationData);
-            
-            const teamSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teams/${teamId}`));
-            if (teamSnapshot.exists()) {
-                const team = teamSnapshot.val();
-                
-                const notificationId = `notification_${Date.now()}`;
-                const notificationData = {
-                    type: 'team_application',
-                    fromUserId: this.currentUser.uid,
-                    fromUserName: this.userProfile.nickname || this.userProfile.username,
-                    teamId: teamId,
-                    teamName: team.name,
-                    applicationId: applicationId,
-                    message: `${this.userProfile.nickname || this.userProfile.username} подал заявку в вашу команду "${team.name}"`,
-                    timestamp: Date.now(),
-                    read: false,
-                    responded: false
-                };
-                
-                await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${team.captain}/${notificationId}`), notificationData);
-                await this.limitNotifications(team.captain);
-            }
-            
-            alert('✅ Заявка отправлена!');
-            this.loadTeamsList();
-            
-        } catch (error) {
-            console.error('❌ Ошибка подачи заявки:', error);
-            alert('❌ Ошибка подачи заявки');
+            await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${team.captain}/${notificationId}`), notificationData);
+            await this.limitNotifications(team.captain);
         }
+        
+        alert('✅ Заявка отправлена!');
+        this.loadTeamsList();
+        
+    } catch (error) {
+        console.error('❌ Ошибка подачи заявки:', error);
+        alert('❌ Ошибка подачи заявки');
     }
+}
 
-    async createTeam(teamName, slogan) {
-        if (!this.currentUser) return;
-        
-        if (this.userProfile.teamId) {
-            alert('❌ Вы уже состоите в команде');
-            return;
-        }
-        
-        const teamId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const teamData = {
-            name: teamName,
-            slogan: slogan,
-            captain: this.currentUser.uid,
-            members: {
-                [this.currentUser.uid]: {
-                    role: 'captain',
-                    nickname: this.userProfile.nickname || this.userProfile.username,
-                    position: this.userProfile.position || '',
-                    mmr: this.userProfile.mmr || 0,
-                    joinedAt: Date.now()
-                }
-            },
-            averageMMR: this.userProfile.mmr || 0,
-            tournamentStatus: 'not_participating',
-            createdAt: Date.now(),
-            createdBy: this.currentUser.uid,
-            updatedAt: Date.now()
-        };
-        
-        try {
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `teams/${teamId}`), teamData);
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${this.currentUser.uid}`), {
-                teamId: teamId
-            });
-            
-            this.userProfile.teamId = teamId;
-            this.updateTeamUI();
-            
-            alert('✅ Команда создана! Вы - капитан команды.');
-            this.closeCreateTeamModal();
-            
-        } catch (error) {
-            console.error('❌ Ошибка создания команды:', error);
-            alert('❌ Ошибка создания команды');
-        }
+async createTeam(teamName, slogan) {
+    if (!this.currentUser) return;
+    
+    if (this.userProfile.teamId) {
+        alert('❌ Вы уже состоите в команде');
+        return;
     }
-
-    async loadTeamInfo() {
-        if (!this.userProfile || !this.userProfile.teamId) return;
-        
-        try {
-            const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`));
-            if (snapshot.exists()) {
-                const team = snapshot.val();
-                this.updateTeamUI(team);
+    
+    const teamId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const teamData = {
+        name: teamName,
+        slogan: slogan,
+        captain: this.currentUser.uid,
+        members: {
+            [this.currentUser.uid]: {
+                role: 'captain',
+                nickname: this.userProfile.nickname || this.userProfile.username,
+                position: this.userProfile.position || '',
+                mmr: this.userProfile.mmr || 0,
+                joinedAt: Date.now()
             }
-        } catch (error) {
-            console.error('❌ Ошибка загрузки информации о команде:', error);
-        }
+        },
+        averageMMR: this.userProfile.mmr || 0,
+        tournamentStatus: 'not_participating',
+        createdAt: Date.now(),
+        createdBy: this.currentUser.uid,
+        updatedAt: Date.now()
+    };
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `teams/${teamId}`), teamData);
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `users/${this.currentUser.uid}`), {
+            teamId: teamId
+        });
+        
+        this.userProfile.teamId = teamId;
+        this.updateTeamUI();
+        
+        alert('✅ Команда создана! Вы - капитан команды.');
+        this.closeCreateTeamModal();
+        
+    } catch (error) {
+        console.error('❌ Ошибка создания команды:', error);
+        alert('❌ Ошибка создания команды');
     }
+}
+
+async loadTeamInfo() {
+    if (!this.userProfile || !this.userProfile.teamId) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`));
+        if (snapshot.exists()) {
+            const team = snapshot.val();
+            this.updateTeamUI(team);
+        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки информации о команде:', error);
+    }
+}
 
     updateTeamUI(team = null) {
         const noTeamSection = document.getElementById('noTeamSection');
@@ -958,18 +967,19 @@ async saveProfile() {
         this.renderTeamPlayers(team.members || {});
     }
 
-    async loadCaptainInfo(captainId) {
-        try {
-            const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `users/${captainId}`));
-            if (snapshot.exists()) {
-                const captain = snapshot.val();
-                document.getElementById('teamCaptainName').textContent = captain.nickname || captain.username;
-            }
-        } catch (error) {
-            console.error('❌ Ошибка загрузки информации о капитане:', error);
-            document.getElementById('teamCaptainName').textContent = 'Неизвестно';
+async loadCaptainInfo(captainId) {
+    try {
+        // Используем this.firebase вместо window.firebase
+        const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `users/${captainId}`));
+        if (snapshot.exists()) {
+            const captain = snapshot.val();
+            document.getElementById('teamCaptainName').textContent = captain.nickname || captain.username;
         }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки информации о капитане:', error);
+        document.getElementById('teamCaptainName').textContent = 'Неизвестно';
     }
+}
 
     renderTeamPlayers(members) {
         const playersGrid = document.getElementById('teamPlayersGrid');
@@ -1005,25 +1015,26 @@ async saveProfile() {
     }
 
     // === СИСТЕМА УВЕДОМЛЕНИЙ ===
-    async loadNotifications() {
-        if (!this.currentUser) return;
+async loadNotifications() {
+    if (!this.currentUser) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}`));
+        const notifications = snapshot.val() || {};
         
-        try {
-            const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `notifications/${this.currentUser.uid}`));
-            const notifications = snapshot.val() || {};
-            
-            const sortedNotifications = Object.entries(notifications)
-                .sort(([,a], [,b]) => b.timestamp - a.timestamp)
-                .reduce((acc, [key, value]) => {
-                    acc[key] = value;
-                    return acc;
-                }, {});
-            
-            this.updateNotificationsUI(sortedNotifications);
-        } catch (error) {
-            console.error('❌ Ошибка загрузки уведомлений:', error);
-        }
+        const sortedNotifications = Object.entries(notifications)
+            .sort(([,a], [,b]) => b.timestamp - a.timestamp)
+            .reduce((acc, [key, value]) => {
+                acc[key] = value;
+                return acc;
+            }, {});
+        
+        this.updateNotificationsUI(sortedNotifications);
+    } catch (error) {
+        console.error('❌ Ошибка загрузки уведомлений:', error);
     }
+}
 
     updateNotificationsUI(notifications) {
         const systemList = document.getElementById('systemNotificationsList');
@@ -1110,327 +1121,333 @@ async saveProfile() {
         `;
     }
 
-    async acceptFriendRequest(notificationId, fromUserId) {
-        if (!this.currentUser) return;
+async acceptFriendRequest(notificationId, fromUserId) {
+    if (!this.currentUser) return;
+    
+    try {
+        await this.addFriend(this.currentUser.uid, fromUserId);
+        await this.addFriend(fromUserId, this.currentUser.uid);
         
-        try {
-            await this.addFriend(this.currentUser.uid, fromUserId);
-            await this.addFriend(fromUserId, this.currentUser.uid);
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
-                responded: true,
-                read: true
-            });
-            
-            const acceptNotificationId = `notification_${Date.now()}`;
-            const acceptNotification = {
-                type: 'friend_accepted',
-                fromUserId: this.currentUser.uid,
-                fromUserName: this.userProfile.nickname || this.userProfile.username,
-                message: `${this.userProfile.nickname || this.userProfile.username} принял(а) ваш запрос дружбы`,
-                timestamp: Date.now(),
-                read: false,
-                responded: true
-            };
-            
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${fromUserId}/${acceptNotificationId}`), acceptNotification);
-            await this.limitNotifications(fromUserId);
-            
-            this.loadNotifications();
-            this.loadFriendsList();
-            alert('✅ Друг добавлен!');
-            
-        } catch (error) {
-            console.error('❌ Ошибка принятия запроса дружбы:', error);
-            alert('❌ Ошибка принятия запроса дружбы');
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
+            responded: true,
+            read: true
+        });
+        
+        const acceptNotificationId = `notification_${Date.now()}`;
+        const acceptNotification = {
+            type: 'friend_accepted',
+            fromUserId: this.currentUser.uid,
+            fromUserName: this.userProfile.nickname || this.userProfile.username,
+            message: `${this.userProfile.nickname || this.userProfile.username} принял(а) ваш запрос дружбы`,
+            timestamp: Date.now(),
+            read: false,
+            responded: true
+        };
+        
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${fromUserId}/${acceptNotificationId}`), acceptNotification);
+        await this.limitNotifications(fromUserId);
+        
+        this.loadNotifications();
+        this.loadFriendsList();
+        alert('✅ Друг добавлен!');
+        
+    } catch (error) {
+        console.error('❌ Ошибка принятия запроса дружбы:', error);
+        alert('❌ Ошибка принятия запроса дружбы');
+    }
+}
+
+async addFriend(userId, friendId) {
+    // Используем this.firebase вместо window.firebase
+    const userRef = this.firebase.ref(this.firebase.database, `users/${userId}`);
+    const snapshot = await this.firebase.get(userRef);
+    
+    if (snapshot.exists()) {
+        const userData = snapshot.val();
+        const friends = userData.friends || [];
+        
+        if (!friends.includes(friendId)) {
+            friends.push(friendId);
+            await this.firebase.update(userRef, { friends });
         }
     }
+}
 
-    async addFriend(userId, friendId) {
-        const userRef = window.firebase.ref(window.firebase.database, `users/${userId}`);
-        const snapshot = await window.firebase.get(userRef);
+async rejectFriendRequest(notificationId, fromUserId) {
+    if (!this.currentUser) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
+            responded: true,
+            read: true
+        });
+        this.loadNotifications();
+        alert('✅ Запрос дружбы отклонен');
+    } catch (error) {
+        console.error('❌ Ошибка отклонения запроса:', error);
+    }
+}
+
+async acceptTeamInvite(notificationId, teamId) {
+    if (!this.currentUser) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamRef = this.firebase.ref(this.firebase.database, `teams/${teamId}`);
+        const teamSnapshot = await this.firebase.get(teamRef);
         
-        if (snapshot.exists()) {
-            const userData = snapshot.val();
-            const friends = userData.friends || [];
-            
-            if (!friends.includes(friendId)) {
-                friends.push(friendId);
-                await window.firebase.update(userRef, { friends });
+        if (!teamSnapshot.exists()) {
+            alert('❌ Команда не найдена');
+            return;
+        }
+        
+        const team = teamSnapshot.val();
+        
+        if (team.members && team.members[this.currentUser.uid]) {
+            alert('ℹ️ Вы уже состоите в этой команде');
+            return;
+        }
+        
+        const updatedMembers = {
+            ...team.members,
+            [this.currentUser.uid]: {
+                role: 'member',
+                nickname: this.userProfile.nickname || this.userProfile.username,
+                position: this.userProfile.position || '',
+                mmr: this.userProfile.mmr || 0,
+                joinedAt: Date.now()
             }
-        }
-    }
-
-    async rejectFriendRequest(notificationId, fromUserId) {
-        if (!this.currentUser) return;
+        };
         
-        try {
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
-                responded: true,
-                read: true
-            });
-            this.loadNotifications();
-            alert('✅ Запрос дружбы отклонен');
-        } catch (error) {
-            console.error('❌ Ошибка отклонения запроса:', error);
-        }
-    }
-
-    async acceptTeamInvite(notificationId, teamId) {
-        if (!this.currentUser) return;
+        const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
         
-        try {
-            const teamRef = window.firebase.ref(window.firebase.database, `teams/${teamId}`);
-            const teamSnapshot = await window.firebase.get(teamRef);
-            
-            if (!teamSnapshot.exists()) {
-                alert('❌ Команда не найдена');
-                return;
-            }
-            
-            const team = teamSnapshot.val();
-            
-            if (team.members && team.members[this.currentUser.uid]) {
-                alert('ℹ️ Вы уже состоите в этой команде');
-                return;
-            }
-            
-            const updatedMembers = {
-                ...team.members,
-                [this.currentUser.uid]: {
-                    role: 'member',
-                    nickname: this.userProfile.nickname || this.userProfile.username,
-                    position: this.userProfile.position || '',
-                    mmr: this.userProfile.mmr || 0,
-                    joinedAt: Date.now()
-                }
-            };
-            
-            const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
-            
-            await window.firebase.update(teamRef, {
-                members: updatedMembers,
-                averageMMR: newAverageMMR
-            });
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${this.currentUser.uid}`), {
-                teamId: teamId
-            });
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
-                responded: true,
-                read: true
-            });
-            
-            const acceptNotificationId = `notification_${Date.now()}`;
-            const acceptNotification = {
-                type: 'team_join',
-                fromUserId: this.currentUser.uid,
-                fromUserName: this.userProfile.nickname || this.userProfile.username,
-                message: `${this.userProfile.nickname || this.userProfile.username} принял приглашение и присоединился к команде "${team.name}"`,
-                timestamp: Date.now(),
-                read: false
-            };
-            
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${team.captain}/${acceptNotificationId}`), acceptNotification);
-            await this.limitNotifications(team.captain);
-            
-            this.userProfile.teamId = teamId;
-            this.updateTeamUI();
-            this.loadNotifications();
-            
-            alert('✅ Вы присоединились к команде!');
-            
-        } catch (error) {
-            console.error('❌ Ошибка принятия приглашения:', error);
-            alert('❌ Ошибка принятия приглашения');
-        }
-    }
-
-    async rejectTeamInvite(notificationId) {
-        if (!this.currentUser) return;
+        await this.firebase.update(teamRef, {
+            members: updatedMembers,
+            averageMMR: newAverageMMR
+        });
         
-        try {
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
-                responded: true,
-                read: true
-            });
-            
-            this.loadNotifications();
-            alert('✅ Приглашение отклонено');
-        } catch (error) {
-            console.error('❌ Ошибка отклонения приглашения:', error);
-        }
-    }
-
-    async acceptTeamApplication(notificationId, applicationId, teamId, userId) {
-        if (!this.currentUser) return;
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `users/${this.currentUser.uid}`), {
+            teamId: teamId
+        });
         
-        try {
-            const teamSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teams/${teamId}`));
-            if (!teamSnapshot.exists() || teamSnapshot.val().captain !== this.currentUser.uid) {
-                alert('❌ Только капитан может принимать заявки');
-                return;
-            }
-            
-            const team = teamSnapshot.val();
-            
-            if (Object.keys(team.members || {}).length >= 5) {
-                alert('❌ Команда уже заполнена');
-                return;
-            }
-            
-            const userSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `users/${userId}`));
-            if (!userSnapshot.exists()) {
-                alert('❌ Пользователь не найден');
-                return;
-            }
-            
-            const user = userSnapshot.val();
-            
-            const updatedMembers = {
-                ...team.members,
-                [userId]: {
-                    role: 'member',
-                    nickname: user.nickname || user.username,
-                    position: user.position || '',
-                    mmr: user.mmr || 0,
-                    joinedAt: Date.now()
-                }
-            };
-            
-            const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `teams/${teamId}`), {
-                members: updatedMembers,
-                averageMMR: newAverageMMR
-            });
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${userId}`), {
-                teamId: teamId
-            });
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `teamApplications/${teamId}/${applicationId}`), {
-                responded: true,
-                accepted: true
-            });
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
-                responded: true,
-                read: true
-            });
-            
-            const acceptNotificationId = `notification_${Date.now()}`;
-            const acceptNotification = {
-                type: 'application_accepted',
-                fromUserId: this.currentUser.uid,
-                fromUserName: this.userProfile.nickname || this.userProfile.username,
-                teamId: teamId,
-                teamName: team.name,
-                message: `Ваша заявка в команду "${team.name}" была принята!`,
-                timestamp: Date.now(),
-                read: false
-            };
-            
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${userId}/${acceptNotificationId}`), acceptNotification);
-            await this.limitNotifications(userId);
-            
-            this.loadNotifications();
-            this.loadTeamInfo();
-            alert('✅ Игрок принят в команду!');
-            
-        } catch (error) {
-            console.error('❌ Ошибка принятия заявки:', error);
-            alert('❌ Ошибка принятия заявки');
-        }
-    }
-
-    async rejectTeamApplication(notificationId, applicationId, teamId, userId) {
-        if (!this.currentUser) return;
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
+            responded: true,
+            read: true
+        });
         
-        try {
-            const teamSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teams/${teamId}`));
-            if (!teamSnapshot.exists() || teamSnapshot.val().captain !== this.currentUser.uid) {
-                alert('❌ Только капитан может отклонять заявки');
-                return;
-            }
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `teamApplications/${teamId}/${applicationId}`), {
-                responded: true,
-                accepted: false
-            });
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
-                responded: true,
-                read: true
-            });
-            
-            const team = teamSnapshot.val();
-            const rejectNotificationId = `notification_${Date.now()}`;
-            const rejectNotification = {
-                type: 'application_rejected',
-                fromUserId: this.currentUser.uid,
-                fromUserName: this.userProfile.nickname || this.userProfile.username,
-                teamId: teamId,
-                teamName: team.name,
-                message: `Ваша заявка в команду "${team.name}" была отклонена`,
-                timestamp: Date.now(),
-                read: false
-            };
-            
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${userId}/${rejectNotificationId}`), rejectNotification);
-            await this.limitNotifications(userId);
-            
-            this.loadNotifications();
-            alert('✅ Заявка отклонена');
-            
-        } catch (error) {
-            console.error('❌ Ошибка отклонения заявки:', error);
-            alert('❌ Ошибка отклонения заявки');
-        }
-    }
-
-    async markNotificationAsRead(notificationId) {
-        if (!this.currentUser) return;
+        const acceptNotificationId = `notification_${Date.now()}`;
+        const acceptNotification = {
+            type: 'team_join',
+            fromUserId: this.currentUser.uid,
+            fromUserName: this.userProfile.nickname || this.userProfile.username,
+            message: `${this.userProfile.nickname || this.userProfile.username} принял приглашение и присоединился к команде "${team.name}"`,
+            timestamp: Date.now(),
+            read: false
+        };
         
-        try {
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
-                read: true
-            });
-            this.loadNotifications();
-        } catch (error) {
-            console.error('❌ Ошибка отметки уведомления:', error);
-        }
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${team.captain}/${acceptNotificationId}`), acceptNotification);
+        await this.limitNotifications(team.captain);
+        
+        this.userProfile.teamId = teamId;
+        this.updateTeamUI();
+        this.loadNotifications();
+        
+        alert('✅ Вы присоединились к команде!');
+        
+    } catch (error) {
+        console.error('❌ Ошибка принятия приглашения:', error);
+        alert('❌ Ошибка принятия приглашения');
     }
+}
 
+async rejectTeamInvite(notificationId) {
+    if (!this.currentUser) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
+            responded: true,
+            read: true
+        });
+        
+        this.loadNotifications();
+        alert('✅ Приглашение отклонено');
+    } catch (error) {
+        console.error('❌ Ошибка отклонения приглашения:', error);
+    }
+}
+async acceptTeamApplication(notificationId, applicationId, teamId, userId) {
+    if (!this.currentUser) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${teamId}`));
+        if (!teamSnapshot.exists() || teamSnapshot.val().captain !== this.currentUser.uid) {
+            alert('❌ Только капитан может принимать заявки');
+            return;
+        }
+        
+        const team = teamSnapshot.val();
+        
+        if (Object.keys(team.members || {}).length >= 5) {
+            alert('❌ Команда уже заполнена');
+            return;
+        }
+        
+        const userSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `users/${userId}`));
+        if (!userSnapshot.exists()) {
+            alert('❌ Пользователь не найден');
+            return;
+        }
+        
+        const user = userSnapshot.val();
+        
+        const updatedMembers = {
+            ...team.members,
+            [userId]: {
+                role: 'member',
+                nickname: user.nickname || user.username,
+                position: user.position || '',
+                mmr: user.mmr || 0,
+                joinedAt: Date.now()
+            }
+        };
+        
+        const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `teams/${teamId}`), {
+            members: updatedMembers,
+            averageMMR: newAverageMMR
+        });
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `users/${userId}`), {
+            teamId: teamId
+        });
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `teamApplications/${teamId}/${applicationId}`), {
+            responded: true,
+            accepted: true
+        });
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
+            responded: true,
+            read: true
+        });
+        
+        const acceptNotificationId = `notification_${Date.now()}`;
+        const acceptNotification = {
+            type: 'application_accepted',
+            fromUserId: this.currentUser.uid,
+            fromUserName: this.userProfile.nickname || this.userProfile.username,
+            teamId: teamId,
+            teamName: team.name,
+            message: `Ваша заявка в команду "${team.name}" была принята!`,
+            timestamp: Date.now(),
+            read: false
+        };
+        
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${userId}/${acceptNotificationId}`), acceptNotification);
+        await this.limitNotifications(userId);
+        
+        this.loadNotifications();
+        this.loadTeamInfo();
+        alert('✅ Игрок принят в команду!');
+        
+    } catch (error) {
+        console.error('❌ Ошибка принятия заявки:', error);
+        alert('❌ Ошибка принятия заявки');
+    }
+}
+
+async rejectTeamApplication(notificationId, applicationId, teamId, userId) {
+    if (!this.currentUser) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${teamId}`));
+        if (!teamSnapshot.exists() || teamSnapshot.val().captain !== this.currentUser.uid) {
+            alert('❌ Только капитан может отклонять заявки');
+            return;
+        }
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `teamApplications/${teamId}/${applicationId}`), {
+            responded: true,
+            accepted: false
+        });
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
+            responded: true,
+            read: true
+        });
+        
+        const team = teamSnapshot.val();
+        const rejectNotificationId = `notification_${Date.now()}`;
+        const rejectNotification = {
+            type: 'application_rejected',
+            fromUserId: this.currentUser.uid,
+            fromUserName: this.userProfile.nickname || this.userProfile.username,
+            teamId: teamId,
+            teamName: team.name,
+            message: `Ваша заявка в команду "${team.name}" была отклонена`,
+            timestamp: Date.now(),
+            read: false
+        };
+        
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${userId}/${rejectNotificationId}`), rejectNotification);
+        await this.limitNotifications(userId);
+        
+        this.loadNotifications();
+        alert('✅ Заявка отклонена');
+        
+    } catch (error) {
+        console.error('❌ Ошибка отклонения заявки:', error);
+        alert('❌ Ошибка отклонения заявки');
+    }
+}
+
+async markNotificationAsRead(notificationId) {
+    if (!this.currentUser) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`), {
+            read: true
+        });
+        this.loadNotifications();
+    } catch (error) {
+        console.error('❌ Ошибка отметки уведомления:', error);
+    }
+}
     // === ОГРАНИЧЕНИЕ УВЕДОМЛЕНИЙ ===
-    async limitNotifications(userId) {
-        try {
-            if (!this.currentUser) return;
+async limitNotifications(userId) {
+    try {
+        if (!this.currentUser) return;
+        
+        // Используем this.firebase вместо window.firebase
+        const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `notifications/${userId}`));
+        if (!snapshot.exists()) return;
+        
+        const notifications = snapshot.val();
+        const notificationEntries = Object.entries(notifications);
+        
+        if (notificationEntries.length > 5) {
+            const sortedNotifications = notificationEntries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+            const notificationsToDelete = sortedNotifications.slice(0, notificationEntries.length - 5);
             
-            const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `notifications/${userId}`));
-            if (!snapshot.exists()) return;
-            
-            const notifications = snapshot.val();
-            const notificationEntries = Object.entries(notifications);
-            
-            if (notificationEntries.length > 5) {
-                const sortedNotifications = notificationEntries.sort((a, b) => a[1].timestamp - b[1].timestamp);
-                const notificationsToDelete = sortedNotifications.slice(0, notificationEntries.length - 5);
-                
-                for (const [notificationId] of notificationsToDelete) {
-                    try {
-                        await window.firebase.remove(window.firebase.ref(window.firebase.database, `notifications/${userId}/${notificationId}`));
-                    } catch (deleteError) {
-                        console.warn(`⚠️ Не удалось удалить уведомление ${notificationId}:`, deleteError);
-                    }
+            for (const [notificationId] of notificationsToDelete) {
+                try {
+                    await this.firebase.remove(this.firebase.ref(this.firebase.database, `notifications/${userId}/${notificationId}`));
+                } catch (deleteError) {
+                    console.warn(`⚠️ Не удалось удалить уведомление ${notificationId}:`, deleteError);
                 }
             }
-        } catch (error) {
-            console.error('❌ Ошибка ограничения уведомлений:', error);
         }
+    } catch (error) {
+        console.error('❌ Ошибка ограничения уведомлений:', error);
     }
-
+}
     // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
     getPositionName(position) {
         const positions = {
@@ -1481,22 +1498,23 @@ async saveProfile() {
     }
 
     // === ПРОСМОТР ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ ===
-    async viewUserProfile(userId) {
-        try {
-            const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `users/${userId}`));
-            if (!snapshot.exists()) {
-                alert('❌ Пользователь не найден');
-                return;
-            }
-            
-            const user = snapshot.val();
-            this.showUserProfileModal(user);
-            
-        } catch (error) {
-            console.error('❌ Ошибка загрузки профиля пользователя:', error);
-            alert('❌ Ошибка загрузки профиля');
+async viewUserProfile(userId) {
+    try {
+        // Используем this.firebase вместо window.firebase
+        const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `users/${userId}`));
+        if (!snapshot.exists()) {
+            alert('❌ Пользователь не найден');
+            return;
         }
+        
+        const user = snapshot.val();
+        this.showUserProfileModal(user);
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки профиля пользователя:', error);
+        alert('❌ Ошибка загрузки профиля');
     }
+}
 
     showUserProfileModal(user) {
         const modal = document.createElement('div');
@@ -1817,171 +1835,172 @@ async saveProfile() {
         document.getElementById('friendsSearchResults').innerHTML = '';
     }
 
-    async loadFriendsForInvite() {
-        if (!this.currentUser || !this.userProfile.friends || this.userProfile.friends.length === 0) {
-            document.getElementById('friendsListForInvite').innerHTML = '<div class="no-data">У вас пока нет друзей</div>';
-            return;
-        }
-        
-        const friendsList = document.getElementById('friendsListForInvite');
-        let friendsHTML = '';
-        
-        try {
-            for (const friendId of this.userProfile.friends) {
-                const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `users/${friendId}`));
-                if (snapshot.exists()) {
-                    const friend = snapshot.val();
-                    
-                    const hasTeam = friend.teamId && friend.teamId !== this.userProfile.teamId;
-                    
-                    friendsHTML += `
-                        <div class="friend-card">
-                            <div class="friend-info">
-                                <div class="member-avatar">
-                                    ${friend.avatarUrl ? 
-                                        `<img src="${friend.avatarUrl}" alt="Аватар" style="width: 100%; height: 100%; border-radius: 50%;">` : 
-                                        '👤'
-                                    }
-                                </div>
-                                <div>
-                                    <h4>${friend.nickname || friend.username}</h4>
-                                    <p>${this.getPositionName(friend.position)} | MMR: ${friend.mmr || 0}</p>
-                                    <p>Telegram: ${friend.telegram || 'Не указан'}</p>
-                                </div>
-                            </div>
-                            <div>
-                                ${hasTeam ? 
-                                    '<span class="add-btn" style="background: var(--text-secondary); cursor: not-allowed;">✅ Уже в команде</span>' :
-                                    `<button class="add-btn" onclick="app.sendTeamInvite('${friendId}')">👥 Пригласить</button>`
+async loadFriendsForInvite() {
+    if (!this.currentUser || !this.userProfile.friends || this.userProfile.friends.length === 0) {
+        document.getElementById('friendsListForInvite').innerHTML = '<div class="no-data">У вас пока нет друзей</div>';
+        return;
+    }
+    
+    const friendsList = document.getElementById('friendsListForInvite');
+    let friendsHTML = '';
+    
+    try {
+        for (const friendId of this.userProfile.friends) {
+            // Используем this.firebase вместо window.firebase
+            const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `users/${friendId}`));
+            if (snapshot.exists()) {
+                const friend = snapshot.val();
+                
+                const hasTeam = friend.teamId && friend.teamId !== this.userProfile.teamId;
+                
+                friendsHTML += `
+                    <div class="friend-card">
+                        <div class="friend-info">
+                            <div class="member-avatar">
+                                ${friend.avatarUrl ? 
+                                    `<img src="${friend.avatarUrl}" alt="Аватар" style="width: 100%; height: 100%; border-radius: 50%;">` : 
+                                    '👤'
                                 }
                             </div>
+                            <div>
+                                <h4>${friend.nickname || friend.username}</h4>
+                                <p>${this.getPositionName(friend.position)} | MMR: ${friend.mmr || 0}</p>
+                                <p>Telegram: ${friend.telegram || 'Не указан'}</p>
+                            </div>
                         </div>
-                    `;
-                }
+                        <div>
+                            ${hasTeam ? 
+                                '<span class="add-btn" style="background: var(--text-secondary); cursor: not-allowed;">✅ Уже в команде</span>' :
+                                `<button class="add-btn" onclick="app.sendTeamInvite('${friendId}')">👥 Пригласить</button>`
+                            }
+                        </div>
+                    </div>
+                `;
             }
-            
-            friendsList.innerHTML = friendsHTML || '<div class="no-data">У вас пока нет друзей</div>';
-            
-        } catch (error) {
-            console.error('❌ Ошибка загрузки списка друзей:', error);
-            friendsList.innerHTML = '<div class="no-data">Ошибка загрузки списка друзей</div>';
         }
+        
+        friendsList.innerHTML = friendsHTML || '<div class="no-data">У вас пока нет друзей</div>';
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки списка друзей:', error);
+        friendsList.innerHTML = '<div class="no-data">Ошибка загрузки списка друзей</div>';
     }
+}
 
-    async sendTeamInvite(friendId) {
-        if (!this.currentUser || !this.userProfile.teamId) {
-            alert('❌ У вас нет команды для отправки приглашений');
+async sendTeamInvite(friendId) {
+    if (!this.currentUser || !this.userProfile.teamId) {
+        alert('❌ У вас нет команды для отправки приглашений');
+        return;
+    }
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`));
+        if (!teamSnapshot.exists()) {
+            alert('❌ Команда не найдена');
             return;
         }
         
-        try {
-            const teamSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`));
-            if (!teamSnapshot.exists()) {
-                alert('❌ Команда не найдена');
-                return;
-            }
-            
-            const team = teamSnapshot.val();
-            
-            if (team.captain !== this.currentUser.uid) {
-                alert('❌ Только капитан команды может отправлять приглашения');
-                return;
-            }
-            
-            const notificationId = `notification_${Date.now()}`;
-            const notificationData = {
-                type: 'team_invite',
-                fromUserId: this.currentUser.uid,
-                fromUserName: this.userProfile.nickname || this.userProfile.username,
-                teamId: this.userProfile.teamId,
-                teamName: team.name,
-                teamSlogan: team.slogan || '',
-                message: `${this.userProfile.nickname || this.userProfile.username} приглашает вас в команду "${team.name}"`,
-                timestamp: Date.now(),
-                read: false,
-                responded: false
-            };
-            
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${friendId}/${notificationId}`), notificationData);
-            await this.limitNotifications(friendId);
-            
-            alert('✅ Приглашение отправлено!');
-            
-        } catch (error) {
-            console.error('❌ Ошибка отправки приглашения:', error);
-            alert('❌ Ошибка отправки приглашения');
-        }
-    }
-
-    async leaveTeam() {
-        if (!this.currentUser || !this.userProfile.teamId) return;
+        const team = teamSnapshot.val();
         
-        if (!confirm('❌ Вы уверены, что хотите покинуть команду?')) {
+        if (team.captain !== this.currentUser.uid) {
+            alert('❌ Только капитан команды может отправлять приглашения');
             return;
         }
         
-        try {
-            const teamRef = window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`);
-            const teamSnapshot = await window.firebase.get(teamRef);
+        const notificationId = `notification_${Date.now()}`;
+        const notificationData = {
+            type: 'team_invite',
+            fromUserId: this.currentUser.uid,
+            fromUserName: this.userProfile.nickname || this.userProfile.username,
+            teamId: this.userProfile.teamId,
+            teamName: team.name,
+            teamSlogan: team.slogan || '',
+            message: `${this.userProfile.nickname || this.userProfile.username} приглашает вас в команду "${team.name}"`,
+            timestamp: Date.now(),
+            read: false,
+            responded: false
+        };
+        
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${friendId}/${notificationId}`), notificationData);
+        await this.limitNotifications(friendId);
+        
+        alert('✅ Приглашение отправлено!');
+        
+    } catch (error) {
+        console.error('❌ Ошибка отправки приглашения:', error);
+        alert('❌ Ошибка отправки приглашения');
+    }
+}
+async leaveTeam() {
+    if (!this.currentUser || !this.userProfile.teamId) return;
+    
+    if (!confirm('❌ Вы уверены, что хотите покинуть команду?')) {
+        return;
+    }
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamRef = this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`);
+        const teamSnapshot = await this.firebase.get(teamRef);
+        
+        if (!teamSnapshot.exists()) {
+            alert('❌ Команда не найдена');
+            return;
+        }
+        
+        const team = teamSnapshot.val();
+        
+        const updatedMembers = { ...team.members };
+        delete updatedMembers[this.currentUser.uid];
+        
+        if (Object.keys(updatedMembers).length === 0) {
+            await this.firebase.remove(teamRef);
             
-            if (!teamSnapshot.exists()) {
-                alert('❌ Команда не найдена');
-                return;
-            }
+            const applicationsRef = this.firebase.ref(this.firebase.database, `teamApplications/${this.userProfile.teamId}`);
+            await this.firebase.remove(applicationsRef);
             
-            const team = teamSnapshot.val();
+            console.log('✅ Команда удалена (последний участник вышел)');
+        } else {
+            const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
             
-            const updatedMembers = { ...team.members };
-            delete updatedMembers[this.currentUser.uid];
-            
-            if (Object.keys(updatedMembers).length === 0) {
-                await window.firebase.remove(teamRef);
-                
-                const applicationsRef = window.firebase.ref(window.firebase.database, `teamApplications/${this.userProfile.teamId}`);
-                await window.firebase.remove(applicationsRef);
-                
-                console.log('✅ Команда удалена (последний участник вышел)');
-            } else {
-                const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
-                
-                await window.firebase.update(teamRef, {
-                    members: updatedMembers,
-                    averageMMR: newAverageMMR
-                });
-                
-                try {
-                    const leaveNotificationId = `notification_${Date.now()}`;
-                    const leaveNotification = {
-                        type: 'team_leave',
-                        fromUserId: this.currentUser.uid,
-                        fromUserName: this.userProfile.nickname || this.userProfile.username,
-                        message: `${this.userProfile.nickname || this.userProfile.username} покинул(а) вашу команду "${team.name}"`,
-                        timestamp: Date.now(),
-                        read: false
-                    };
-                    
-                    await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${team.captain}/${leaveNotificationId}`), leaveNotification);
-                    await this.limitNotifications(team.captain);
-                } catch (notificationError) {
-                    console.error('❌ Ошибка отправки уведомления капитану:', notificationError);
-                }
-            }
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${this.currentUser.uid}`), {
-                teamId: null
+            await this.firebase.update(teamRef, {
+                members: updatedMembers,
+                averageMMR: newAverageMMR
             });
             
-            this.userProfile.teamId = null;
-            this.updateTeamUI();
-            
-            alert('✅ Вы покинули команду');
-            
-        } catch (error) {
-            console.error('❌ Ошибка выхода из команды:', error);
-            alert('❌ Ошибка выхода из команды');
+            try {
+                const leaveNotificationId = `notification_${Date.now()}`;
+                const leaveNotification = {
+                    type: 'team_leave',
+                    fromUserId: this.currentUser.uid,
+                    fromUserName: this.userProfile.nickname || this.userProfile.username,
+                    message: `${this.userProfile.nickname || this.userProfile.username} покинул(а) вашу команду "${team.name}"`,
+                    timestamp: Date.now(),
+                    read: false
+                };
+                
+                await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${team.captain}/${leaveNotificationId}`), leaveNotification);
+                await this.limitNotifications(team.captain);
+            } catch (notificationError) {
+                console.error('❌ Ошибка отправки уведомления капитану:', notificationError);
+            }
         }
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `users/${this.currentUser.uid}`), {
+            teamId: null
+        });
+        
+        this.userProfile.teamId = null;
+        this.updateTeamUI();
+        
+        alert('✅ Вы покинули команду');
+        
+    } catch (error) {
+        console.error('❌ Ошибка выхода из команды:', error);
+        alert('❌ Ошибка выхода из команды');
     }
-
+}
     showDeleteTeamModal() {
         if (!this.currentUser || !this.userProfile.teamId) return;
         
@@ -1991,80 +2010,80 @@ async saveProfile() {
         document.getElementById('deleteTeamModal').classList.remove('hidden');
     }
 
-    async deleteTeam() {
-        if (!this.currentUser || !this.userProfile.teamId) return;
+async deleteTeam() {
+    if (!this.currentUser || !this.userProfile.teamId) return;
+    
+    const teamName = document.getElementById('teamCardName').textContent;
+    const confirmInput = document.getElementById('confirmTeamNameInput').value.trim();
+    
+    if (confirmInput !== teamName) {
+        alert('❌ Название команды не совпадает!');
+        return;
+    }
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamRef = this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`);
+        const teamSnapshot = await this.firebase.get(teamRef);
         
-        const teamName = document.getElementById('teamCardName').textContent;
-        const confirmInput = document.getElementById('confirmTeamNameInput').value.trim();
-        
-        if (confirmInput !== teamName) {
-            alert('❌ Название команды не совпадает!');
+        if (!teamSnapshot.exists()) {
+            alert('❌ Команда не найдена');
             return;
         }
         
-        try {
-            const teamRef = window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`);
-            const teamSnapshot = await window.firebase.get(teamRef);
-            
-            if (!teamSnapshot.exists()) {
-                alert('❌ Команда не найдена');
-                return;
-            }
-            
-            const team = teamSnapshot.val();
-            
-            if (team.captain !== this.currentUser.uid) {
-                alert('❌ Только капитан может удалить команду');
-                return;
-            }
-            
-            // Уведомляем всех участников о удалении команды
-            Object.keys(team.members || {}).forEach(async memberId => {
-                try {
-                    const deleteNotificationId = `notification_${Date.now()}`;
-                    const deleteNotification = {
-                        type: 'team_deleted',
-                        fromUserId: this.currentUser.uid,
-                        fromUserName: this.userProfile.nickname || this.userProfile.username,
-                        message: `Команда "${team.name}" была удалена капитаном`,
-                        timestamp: Date.now(),
-                        read: false
-                    };
-                    
-                    await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${memberId}/${deleteNotificationId}`), deleteNotification);
-                    
-                    await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${memberId}`), {
-                        teamId: null
-                    });
-                    
-                    await this.limitNotifications(memberId);
-                } catch (memberError) {
-                    console.error(`❌ Ошибка уведомления участника ${memberId}:`, memberError);
-                }
-            });
-            
-            await window.firebase.remove(teamRef);
-            
-            const applicationsRef = window.firebase.ref(window.firebase.database, `teamApplications/${this.userProfile.teamId}`);
-            await window.firebase.remove(applicationsRef);
-            
-            this.userProfile.teamId = null;
-            this.updateTeamUI();
-            
-            this.closeDeleteTeamModal();
-            alert('✅ Команда удалена!');
-            
-        } catch (error) {
-            console.error('❌ Ошибка удаления команды:', error);
-            alert('❌ Ошибка удаления команды');
+        const team = teamSnapshot.val();
+        
+        if (team.captain !== this.currentUser.uid) {
+            alert('❌ Только капитан может удалить команду');
+            return;
         }
+        
+        // Уведомляем всех участников о удалении команды
+        Object.keys(team.members || {}).forEach(async memberId => {
+            try {
+                const deleteNotificationId = `notification_${Date.now()}`;
+                const deleteNotification = {
+                    type: 'team_deleted',
+                    fromUserId: this.currentUser.uid,
+                    fromUserName: this.userProfile.nickname || this.userProfile.username,
+                    message: `Команда "${team.name}" была удалена капитаном`,
+                    timestamp: Date.now(),
+                    read: false
+                };
+                
+                await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${memberId}/${deleteNotificationId}`), deleteNotification);
+                
+                await this.firebase.update(this.firebase.ref(this.firebase.database, `users/${memberId}`), {
+                    teamId: null
+                });
+                
+                await this.limitNotifications(memberId);
+            } catch (memberError) {
+                console.error(`❌ Ошибка уведомления участника ${memberId}:`, memberError);
+            }
+        });
+        
+        await this.firebase.remove(teamRef);
+        
+        const applicationsRef = this.firebase.ref(this.firebase.database, `teamApplications/${this.userProfile.teamId}`);
+        await this.firebase.remove(applicationsRef);
+        
+        this.userProfile.teamId = null;
+        this.updateTeamUI();
+        
+        this.closeDeleteTeamModal();
+        alert('✅ Команда удалена!');
+        
+    } catch (error) {
+        console.error('❌ Ошибка удаления команды:', error);
+        alert('❌ Ошибка удаления команды');
     }
-
+}
     closeDeleteTeamModal() {
         document.getElementById('deleteTeamModal').classList.add('hidden');
     }
 
-   async showEditTeamModal() {  // ДОБАВЛЕНО async
+async showEditTeamModal() {
     if (!this.currentUser || !this.userProfile || !this.userProfile.teamId) {
         alert('❌ У вас нет команды для редактирования');
         return;
@@ -2072,7 +2091,8 @@ async saveProfile() {
     
     try {
         console.log('🔄 Проверка прав капитана...');
-        const teamSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`));
+        // Используем this.firebase вместо window.firebase
+        const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`));
         if (!teamSnapshot.exists()) {
             alert('❌ Команда не найдена');
             return;
@@ -2086,7 +2106,7 @@ async saveProfile() {
         
         console.log('✅ Пользователь является капитаном, открываем модальное окно');
         document.getElementById('editTeamModal').classList.remove('hidden');
-        await this.loadTeamMembersForEdit(team);  // ДОБАВЛЕНО await если loadTeamMembersForEdit тоже async
+        await this.loadTeamMembersForEdit(team);
         
     } catch (error) {
         console.error('❌ Ошибка проверки прав капитана:', error);
@@ -2094,265 +2114,271 @@ async saveProfile() {
     }
 }
 
-    async loadTeamMembersForEdit(team = null) {
-        if (!this.userProfile.teamId) return;
+async loadTeamMembersForEdit(team = null) {
+    if (!this.userProfile.teamId) return;
+    
+    try {
+        if (!team) {
+            // Используем this.firebase вместо window.firebase
+            const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`));
+            if (!snapshot.exists()) return;
+            team = snapshot.val();
+        }
         
-        try {
-            if (!team) {
-                const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`));
-                if (!snapshot.exists()) return;
-                team = snapshot.val();
-            }
-            
-            console.log('🔄 Загрузка членов команды для редактирования...');
-            const membersContainer = document.getElementById('teamMembersEditList');
-            
-            let membersHTML = `
-                <div class="team-general-settings">
-                    <h3 style="color: var(--accent-primary); margin-bottom: 15px;">⚙️ Общие настройки команды</h3>
-                    <div class="form-group">
-                        <label>Статус участия в турнирах:</label>
-                        <select id="teamTournamentStatusEdit" class="form-input">
-                            <option value="not_participating" ${team.tournamentStatus === 'not_participating' ? 'selected' : ''}>Не участвует</option>
-                            <option value="participating" ${team.tournamentStatus === 'participating' ? 'selected' : ''}>Участвует в турнирах</option>
-                        </select>
-                    </div>
-                    <button class="save-btn" onclick="app.updateTeamGeneralSettings()" style="margin-bottom: 20px;">💾 Сохранить настройки</button>
+        console.log('🔄 Загрузка членов команды для редактирования...');
+        const membersContainer = document.getElementById('teamMembersEditList');
+        
+        let membersHTML = `
+            <div class="team-general-settings">
+                <h3 style="color: var(--accent-primary); margin-bottom: 15px;">⚙️ Общие настройки команды</h3>
+                <div class="form-group">
+                    <label>Статус участия в турнирах:</label>
+                    <select id="teamTournamentStatusEdit" class="form-input">
+                        <option value="not_participating" ${team.tournamentStatus === 'not_participating' ? 'selected' : ''}>Не участвует</option>
+                        <option value="participating" ${team.tournamentStatus === 'participating' ? 'selected' : ''}>Участвует в турнирах</option>
+                    </select>
                 </div>
-                <h3 style="color: var(--accent-primary); margin: 20px 0 15px 0;">👥 Управление составом</h3>
-            `;
+                <button class="save-btn" onclick="app.updateTeamGeneralSettings()" style="margin-bottom: 20px;">💾 Сохранить настройки</button>
+            </div>
+            <h3 style="color: var(--accent-primary); margin: 20px 0 15px 0;">👥 Управление составом</h3>
+        `;
+        
+        Object.entries(team.members || {}).forEach(([memberId, memberData]) => {
+            const isCaptain = memberData.role === 'captain';
+            const isCurrentUser = memberId === this.currentUser.uid;
             
-            Object.entries(team.members || {}).forEach(([memberId, memberData]) => {
-                const isCaptain = memberData.role === 'captain';
-                const isCurrentUser = memberId === this.currentUser.uid;
-                
-                membersHTML += `
-                    <div class="team-member-edit">
-                        <div class="member-edit-info">
-                            <h4>${memberData.nickname} ${isCurrentUser ? '(Вы)' : ''}</h4>
-                            <p>Текущая роль: ${this.getPositionName(memberData.position)} | MMR: ${memberData.mmr || 0}</p>
-                            <p>Статус: ${isCaptain ? '👑 Капитан' : '👤 Участник'}</p>
+            membersHTML += `
+                <div class="team-member-edit">
+                    <div class="member-edit-info">
+                        <h4>${memberData.nickname} ${isCurrentUser ? '(Вы)' : ''}</h4>
+                        <p>Текущая роль: ${this.getPositionName(memberData.position)} | MMR: ${memberData.mmr || 0}</p>
+                        <p>Статус: ${isCaptain ? '👑 Капитан' : '👤 Участник'}</p>
+                    </div>
+                    <div class="member-edit-actions">
+                        <div class="member-fields">
+                            <input type="text" id="nickname_${memberId}" value="${memberData.nickname}" class="form-input" placeholder="Никнейм" style="margin-bottom: 5px;">
+                            <select class="form-input" id="position_${memberId}" style="margin-bottom: 5px;">
+                                <option value="">Выберите позицию</option>
+                                <option value="carry" ${memberData.position === 'carry' ? 'selected' : ''}>Керри</option>
+                                <option value="mid" ${memberData.position === 'mid' ? 'selected' : ''}>Мидер</option>
+                                <option value="offlane" ${memberData.position === 'offlane' ? 'selected' : ''}>Оффлейнер</option>
+                                <option value="support4" ${memberData.position === 'support4' ? 'selected' : ''}>Саппорт 4</option>
+                                <option value="support5" ${memberData.position === 'support5' ? 'selected' : ''}>Саппорт 5</option>
+                            </select>
+                            <input type="number" id="mmr_${memberId}" value="${memberData.mmr || 0}" class="form-input" placeholder="MMR" style="margin-bottom: 5px;">
                         </div>
-                        <div class="member-edit-actions">
-                            <div class="member-fields">
-                                <input type="text" id="nickname_${memberId}" value="${memberData.nickname}" class="form-input" placeholder="Никнейм" style="margin-bottom: 5px;">
-                                <select class="form-input" id="position_${memberId}" style="margin-bottom: 5px;">
-                                    <option value="">Выберите позицию</option>
-                                    <option value="carry" ${memberData.position === 'carry' ? 'selected' : ''}>Керри</option>
-                                    <option value="mid" ${memberData.position === 'mid' ? 'selected' : ''}>Мидер</option>
-                                    <option value="offlane" ${memberData.position === 'offlane' ? 'selected' : ''}>Оффлейнер</option>
-                                    <option value="support4" ${memberData.position === 'support4' ? 'selected' : ''}>Саппорт 4</option>
-                                    <option value="support5" ${memberData.position === 'support5' ? 'selected' : ''}>Саппорт 5</option>
-                                </select>
-                                <input type="number" id="mmr_${memberId}" value="${memberData.mmr || 0}" class="form-input" placeholder="MMR" style="margin-bottom: 5px;">
-                            </div>
-                            <div class="member-action-buttons">
-                                <button class="add-btn" onclick="app.updateTeamMember('${memberId}')">💾 Обновить</button>
-                                ${!isCaptain ? `
-                                    <button class="cancel-btn" onclick="app.removeTeamMember('${memberId}')">❌ Удалить</button>
-                                    <button class="save-btn" onclick="app.transferCaptaincy('${memberId}')">👑 Сделать капитаном</button>
-                                ` : `
-                                    <span class="add-btn" style="background: var(--accent-gold); color: black; cursor: default;">👑 Капитан команды</span>
-                                `}
-                            </div>
+                        <div class="member-action-buttons">
+                            <button class="add-btn" onclick="app.updateTeamMember('${memberId}')">💾 Обновить</button>
+                            ${!isCaptain ? `
+                                <button class="cancel-btn" onclick="app.removeTeamMember('${memberId}')">❌ Удалить</button>
+                                <button class="save-btn" onclick="app.transferCaptaincy('${memberId}')">👑 Сделать капитаном</button>
+                            ` : `
+                                <span class="add-btn" style="background: var(--accent-gold); color: black; cursor: default;">👑 Капитан команды</span>
+                            `}
                         </div>
                     </div>
-                `;
-            });
-            
-            membersContainer.innerHTML = membersHTML || '<div class="no-data">Нет участников в команде</div>';
-            console.log('✅ Члены команды загружены для редактирования');
-            
-        } catch (error) {
-            console.error('❌ Ошибка загрузки членов команды для редактирования:', error);
-            const membersContainer = document.getElementById('teamMembersEditList');
-            membersContainer.innerHTML = '<div class="no-data">Ошибка загрузки участников</div>';
-        }
-    }
-
-    async updateTeamGeneralSettings() {
-        if (!this.userProfile.teamId) return;
+                </div>
+            `;
+        });
         
-        try {
-            const tournamentStatus = document.getElementById('teamTournamentStatusEdit').value;
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`), {
-                tournamentStatus: tournamentStatus,
-                updatedAt: Date.now()
-            });
-            
-            alert('✅ Настройки команды обновлены!');
-            this.loadTeamInfo();
-            
-        } catch (error) {
-            console.error('❌ Ошибка обновления настроек команды:', error);
-            alert('❌ Ошибка обновления настроек команды');
-        }
-    }
-
-    async updateTeamMember(memberId) {
-        if (!this.userProfile.teamId) return;
+        membersContainer.innerHTML = membersHTML || '<div class="no-data">Нет участников в команде</div>';
+        console.log('✅ Члены команды загружены для редактирования');
         
-        try {
-            const newNickname = document.getElementById(`nickname_${memberId}`).value.trim();
-            const newPosition = document.getElementById(`position_${memberId}`).value;
-            const newMMR = parseInt(document.getElementById(`mmr_${memberId}`).value) || 0;
-            
-            if (!newNickname) {
-                alert('❌ Введите никнейм игрока');
-                return;
-            }
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}/members/${memberId}`), {
-                nickname: newNickname,
-                position: newPosition,
-                mmr: newMMR
-            });
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${memberId}`), {
-                nickname: newNickname,
-                mmr: newMMR,
-                position: newPosition
-            });
-            
-            if (memberId === this.currentUser.uid) {
-                this.userProfile.nickname = newNickname;
-                this.userProfile.mmr = newMMR;
-                this.userProfile.position = newPosition;
-                this.updateProfileUI();
-            }
-            
-            await this.recalculateTeamAverageMMR();
-            
-            alert('✅ Данные игрока обновлены!');
-            this.loadTeamMembersForEdit();
-            this.loadTeamInfo();
-            
-        } catch (error) {
-            console.error('❌ Ошибка обновления данных игрока:', error);
-            alert('❌ Ошибка обновления данных');
-        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки членов команды для редактирования:', error);
+        const membersContainer = document.getElementById('teamMembersEditList');
+        membersContainer.innerHTML = '<div class="no-data">Ошибка загрузки участников</div>';
     }
+}
 
-    async recalculateTeamAverageMMR() {
-        if (!this.userProfile.teamId) return;
+async updateTeamGeneralSettings() {
+    if (!this.userProfile.teamId) return;
+    
+    try {
+        const tournamentStatus = document.getElementById('teamTournamentStatusEdit').value;
         
-        try {
-            const teamSnapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`));
-            if (!teamSnapshot.exists()) return;
-            
-            const team = teamSnapshot.val();
-            const newAverageMMR = await this.calculateTeamAverageMMR(team.members);
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`), {
-                averageMMR: newAverageMMR,
-                updatedAt: Date.now()
-            });
-            
-        } catch (error) {
-            console.error('❌ Ошибка пересчета MMR команды:', error);
-        }
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`), {
+            tournamentStatus: tournamentStatus,
+            updatedAt: Date.now()
+        });
+        
+        alert('✅ Настройки команды обновлены!');
+        this.loadTeamInfo();
+        
+    } catch (error) {
+        console.error('❌ Ошибка обновления настроек команды:', error);
+        alert('❌ Ошибка обновления настроек команды');
     }
+}
 
-    async removeTeamMember(memberId) {
-        if (!this.userProfile.teamId || !confirm('❌ Вы уверены, что хотите удалить этого игрока из команды?')) {
+async updateTeamMember(memberId) {
+    if (!this.userProfile.teamId) return;
+    
+    try {
+        const newNickname = document.getElementById(`nickname_${memberId}`).value.trim();
+        const newPosition = document.getElementById(`position_${memberId}`).value;
+        const newMMR = parseInt(document.getElementById(`mmr_${memberId}`).value) || 0;
+        
+        if (!newNickname) {
+            alert('❌ Введите никнейм игрока');
             return;
         }
         
-        try {
-            const teamRef = window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`);
-            const teamSnapshot = await window.firebase.get(teamRef);
-            
-            if (!teamSnapshot.exists()) return;
-            
-            const team = teamSnapshot.val();
-            const updatedMembers = { ...team.members };
-            delete updatedMembers[memberId];
-            
-            const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
-            
-            await window.firebase.update(teamRef, {
-                members: updatedMembers,
-                averageMMR: newAverageMMR
-            });
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${memberId}`), {
-                teamId: null
-            });
-            
-            const removeNotificationId = `notification_${Date.now()}`;
-            const removeNotification = {
-                type: 'team_removed',
-                fromUserId: this.currentUser.uid,
-                fromUserName: this.userProfile.nickname || this.userProfile.username,
-                teamId: this.userProfile.teamId,
-                teamName: team.name,
-                message: `Вас удалили из команды "${team.name}"`,
-                timestamp: Date.now(),
-                read: false
-            };
-            
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${memberId}/${removeNotificationId}`), removeNotification);
-            await this.limitNotifications(memberId);
-            
-            alert('✅ Игрок удален из команды');
-            this.loadTeamMembersForEdit();
-            this.loadTeamInfo();
-            
-        } catch (error) {
-            console.error('❌ Ошибка удаления игрока:', error);
-            alert('❌ Ошибка удаления игрока');
-        }
-    }
-
-    async transferCaptaincy(newCaptainId) {
-        if (!this.userProfile.teamId || !confirm('👑 Вы уверены, что хотите передать капитанство?')) {
-            return;
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}/members/${memberId}`), {
+            nickname: newNickname,
+            position: newPosition,
+            mmr: newMMR
+        });
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `users/${memberId}`), {
+            nickname: newNickname,
+            mmr: newMMR,
+            position: newPosition
+        });
+        
+        if (memberId === this.currentUser.uid) {
+            this.userProfile.nickname = newNickname;
+            this.userProfile.mmr = newMMR;
+            this.userProfile.position = newPosition;
+            this.updateProfileUI();
         }
         
-        try {
-            const teamRef = window.firebase.ref(window.firebase.database, `teams/${this.userProfile.teamId}`);
-            const teamSnapshot = await window.firebase.get(teamRef);
-            
-            if (!teamSnapshot.exists()) return;
-            
-            const team = teamSnapshot.val();
-            
-            const updatedMembers = { ...team.members };
-            updatedMembers[this.currentUser.uid].role = 'member';
-            updatedMembers[newCaptainId].role = 'captain';
-            
-            await window.firebase.update(teamRef, {
-                captain: newCaptainId,
-                members: updatedMembers
-            });
-            
-            const captainNotificationId = `notification_${Date.now()}`;
-            const captainNotification = {
-                type: 'team_captain',
-                fromUserId: this.currentUser.uid,
-                fromUserName: this.userProfile.nickname || this.userProfile.username,
-                teamId: this.userProfile.teamId,
-                teamName: team.name,
-                message: `Вы стали капитаном команды "${team.name}"`,
-                timestamp: Date.now(),
-                read: false
-            };
-            
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `notifications/${newCaptainId}/${captainNotificationId}`), captainNotification);
-            await this.limitNotifications(newCaptainId);
-            
-            this.userProfile.teamId = null;
-            
-            alert('✅ Капитанство передано!');
-            this.closeEditTeamModal();
-            this.loadTeamInfo();
-            
-        } catch (error) {
-            console.error('❌ Ошибка передачи капитанства:', error);
-            alert('❌ Ошибка передачи капитанства');
-        }
+        await this.recalculateTeamAverageMMR();
+        
+        alert('✅ Данные игрока обновлены!');
+        this.loadTeamMembersForEdit();
+        this.loadTeamInfo();
+        
+    } catch (error) {
+        console.error('❌ Ошибка обновления данных игрока:', error);
+        alert('❌ Ошибка обновления данных');
     }
+}
+
+async recalculateTeamAverageMMR() {
+    if (!this.userProfile.teamId) return;
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`));
+        if (!teamSnapshot.exists()) return;
+        
+        const team = teamSnapshot.val();
+        const newAverageMMR = await this.calculateTeamAverageMMR(team.members);
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`), {
+            averageMMR: newAverageMMR,
+            updatedAt: Date.now()
+        });
+        
+    } catch (error) {
+        console.error('❌ Ошибка пересчета MMR команды:', error);
+    }
+}
+
+async removeTeamMember(memberId) {
+    if (!this.userProfile.teamId || !confirm('❌ Вы уверены, что хотите удалить этого игрока из команды?')) {
+        return;
+    }
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamRef = this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`);
+        const teamSnapshot = await this.firebase.get(teamRef);
+        
+        if (!teamSnapshot.exists()) return;
+        
+        const team = teamSnapshot.val();
+        const updatedMembers = { ...team.members };
+        delete updatedMembers[memberId];
+        
+        const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
+        
+        await this.firebase.update(teamRef, {
+            members: updatedMembers,
+            averageMMR: newAverageMMR
+        });
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `users/${memberId}`), {
+            teamId: null
+        });
+        
+        const removeNotificationId = `notification_${Date.now()}`;
+        const removeNotification = {
+            type: 'team_removed',
+            fromUserId: this.currentUser.uid,
+            fromUserName: this.userProfile.nickname || this.userProfile.username,
+            teamId: this.userProfile.teamId,
+            teamName: team.name,
+            message: `Вас удалили из команды "${team.name}"`,
+            timestamp: Date.now(),
+            read: false
+        };
+        
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${memberId}/${removeNotificationId}`), removeNotification);
+        await this.limitNotifications(memberId);
+        
+        alert('✅ Игрок удален из команды');
+        this.loadTeamMembersForEdit();
+        this.loadTeamInfo();
+        
+    } catch (error) {
+        console.error('❌ Ошибка удаления игрока:', error);
+        alert('❌ Ошибка удаления игрока');
+    }
+}
+
+async transferCaptaincy(newCaptainId) {
+    if (!this.userProfile.teamId || !confirm('👑 Вы уверены, что хотите передать капитанство?')) {
+        return;
+    }
+    
+    try {
+        // Используем this.firebase вместо window.firebase
+        const teamRef = this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`);
+        const teamSnapshot = await this.firebase.get(teamRef);
+        
+        if (!teamSnapshot.exists()) return;
+        
+        const team = teamSnapshot.val();
+        
+        const updatedMembers = { ...team.members };
+        updatedMembers[this.currentUser.uid].role = 'member';
+        updatedMembers[newCaptainId].role = 'captain';
+        
+        await this.firebase.update(teamRef, {
+            captain: newCaptainId,
+            members: updatedMembers
+        });
+        
+        const captainNotificationId = `notification_${Date.now()}`;
+        const captainNotification = {
+            type: 'team_captain',
+            fromUserId: this.currentUser.uid,
+            fromUserName: this.userProfile.nickname || this.userProfile.username,
+            teamId: this.userProfile.teamId,
+            teamName: team.name,
+            message: `Вы стали капитаном команды "${team.name}"`,
+            timestamp: Date.now(),
+            read: false
+        };
+        
+        await this.firebase.set(this.firebase.ref(this.firebase.database, `notifications/${newCaptainId}/${captainNotificationId}`), captainNotification);
+        await this.limitNotifications(newCaptainId);
+        
+        this.userProfile.teamId = null;
+        
+        alert('✅ Капитанство передано!');
+        this.closeEditTeamModal();
+        this.loadTeamInfo();
+        
+    } catch (error) {
+        console.error('❌ Ошибка передачи капитанства:', error);
+        alert('❌ Ошибка передачи капитанства');
+    }
+}
 }
 
 // Создаем и инициализируем приложение
@@ -2362,6 +2388,7 @@ const app = new IllusiveApp();
 window.app = app;
 
 // Экспортируем основные методы для использования в HTML
+// (эти методы уже используют this.firebase внутри класса)
 window.sendFriendRequest = (userId) => app.sendFriendRequest(userId);
 window.applyToTeam = (teamId) => app.applyToTeam(teamId);
 window.acceptFriendRequest = (notificationId, fromUserId) => app.acceptFriendRequest(notificationId, fromUserId);
