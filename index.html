@@ -6,8 +6,6 @@
     <title>Illusive Community - Matchmaking Platform</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <script type="module" src="firebase-config.js" defer></script>
-    <script src="script.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -30,7 +28,7 @@
 
         <main class="main-content">
             <!-- Навигация -->
-            <div class="navigation-grid">
+            <div class="navigation-grid hidden" id="navigationGrid">
                 <div class="nav-item">
                     <button class="nav-btn profile-btn" id="profileBtn">
                         <span class="btn-icon">👤</span>
@@ -67,7 +65,6 @@
                     </button>
                 </div>
 
-                <!-- Новые кнопки -->
                 <div class="nav-item">
                     <button class="nav-btn matches-btn" id="matchesBtn">
                         <span class="btn-icon">🎮</span>
@@ -112,7 +109,7 @@
                                         <label for="loginPassword">Пароль:</label>
                                         <input type="password" id="loginPassword" class="form-input" placeholder="Введите пароль" required autocomplete="current-password">
                                     </div>
-                                    <button type="submit" id="loginBtn" class="auth-btn">Войти</button>
+                                    <button type="submit" class="auth-btn">Войти</button>
                                     <div id="loginMessage" class="auth-message"></div>
                                 </form>
                             </div>
@@ -139,7 +136,7 @@
                                         <label for="confirmPassword">Повторите пароль:</label>
                                         <input type="password" id="confirmPassword" class="form-input" placeholder="Повторите пароль" required autocomplete="new-password">
                                     </div>
-                                    <button type="submit" id="registerBtn" class="auth-btn">Зарегистрироваться</button>
+                                    <button type="submit" class="auth-btn">Зарегистрироваться</button>
                                     <div id="registerMessage" class="auth-message"></div>
                                 </form>
                             </div>
@@ -239,8 +236,8 @@
                     
                     <div class="teams-container">
                         <div class="teams-tabs">
-                            <button class="team-tab-btn active" onclick="switchTeamTab('fullTeams')">Полный состав</button>
-                            <button class="team-tab-btn" onclick="switchTeamTab('incompleteTeams')">Неполный состав</button>
+                            <button class="team-tab-btn active" onclick="app.switchTeamTab('fullTeams')">Полный состав</button>
+                            <button class="team-tab-btn" onclick="app.switchTeamTab('incompleteTeams')">Неполный состав</button>
                         </div>
                         
                         <div id="fullTeams" class="team-tab-pane active">
@@ -272,7 +269,7 @@
                             </div>
                         </div>
 
-                        <!-- Состояние с командой - новая карточка-визитка -->
+                        <!-- Состояние с командой -->
                         <div id="teamSection" class="team-section hidden">
                             <div class="team-visiting-card" id="teamVisitingCard">
                                 <div class="card-header">
@@ -306,7 +303,6 @@
                                     <div>Капитан команды: <span id="teamCaptainName">Не указан</span></div>
                                     <div>Дата создания: <span id="teamCreationDate">--.--.----</span></div>
                                     
-                                    <!-- Кнопки управления командой -->
                                     <div class="team-management-actions">
                                         <button id="invitePlayersBtn" class="edit-team-btn">👥 Пригласить игроков</button>
                                         <button id="editTeamBtn" class="edit-team-btn">⚙️ Редактировать команду</button>
@@ -348,7 +344,7 @@
         </main>
     </div>
 
-    <!-- Модальное окно создания команды -->
+    <!-- Модальные окна -->
     <div id="createTeamModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -396,7 +392,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно приглашения игроков -->
     <div id="invitePlayersModal" class="modal hidden">
         <div class="modal-content large-modal">
             <div class="modal-header">
@@ -428,12 +423,11 @@
         </div>
     </div>
 
-    <!-- Модальное окно редактирования команды -->
     <div id="editTeamModal" class="modal hidden">
         <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
                 <h2>⚙️ Редактирование команды</h2>
-                <button class="close-modal" onclick="closeEditTeamModal()">×</button>
+                <button class="close-modal" onclick="app.closeEditTeamModal()">×</button>
             </div>
             <div class="modal-body">
                 <div class="team-management-info">
@@ -446,13 +440,12 @@
                     <!-- Список членов команды для редактирования -->
                 </div>
                 <div class="form-actions" style="margin-top: 20px;">
-                    <button class="cancel-btn" onclick="closeEditTeamModal()">❌ Закрыть</button>
+                    <button class="cancel-btn" onclick="app.closeEditTeamModal()">❌ Закрыть</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно удаления команды -->
     <div id="deleteTeamModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -477,8 +470,8 @@
         </div>
     </div>
 
-<!-- В КОНЦЕ файла, перед </body> -->
-<script type="module" src="firebase-config.js"></script>
-<script src="script.js"></script>
+    <!-- Загрузка скриптов -->
+    <script type="module" src="firebase-config.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
