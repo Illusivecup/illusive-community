@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -5,12 +6,6 @@
     <title>Illusive Community - Matchmaking Platform</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDK 9.x (совместимая версия) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -475,8 +470,16 @@
         </div>
     </div>
 
- <!-- Загрузка скриптов -->
-    <script src="firebase-config.js"></script>
+    <!-- Firebase SDK 9.x -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+    <!-- Firebase Initialization -->
+    <script src="firebase-init.js"></script>
+
+    <!-- Основной скрипт приложения -->
     <script src="script.js"></script>
 </body>
 </html>

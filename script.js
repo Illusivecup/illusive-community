@@ -22,17 +22,13 @@ class IllusiveApp {
     }
 
 initializeFirebaseMethods() {
-    if (typeof firebase === 'undefined') {
-        console.error('❌ Firebase not loaded');
+    // Проверяем, что Firebase загружен и инициализирован
+    if (typeof firebase === 'undefined' || !firebase.apps.length) {
+        console.error('❌ Firebase not initialized');
         return;
     }
 
-    // Убедитесь, что Firebase инициализирован
-    if (!firebase.apps.length && window.firebaseConfig) {
-        firebase.initializeApp(window.firebaseConfig);
-    }
-
-    // Правильные методы для Firebase 9.x
+    // Используем глобальный Firebase объект
     this.firebase = {
         // App
         app: firebase.app,
@@ -47,7 +43,7 @@ initializeFirebaseMethods() {
         onAuthStateChanged: (callback) => 
             firebase.auth().onAuthStateChanged(callback),
         
-        // Database methods - правильный синтаксис для Firebase 9.x
+        // Database methods
         database: firebase.database,
         ref: firebase.database.ref,
         set: firebase.database.set,
@@ -97,26 +93,26 @@ initializeFirebaseMethods() {
         }
     }
 
-    async waitForFirebase() {
-        return new Promise((resolve, reject) => {
-            const checkFirebase = () => {
-                if (typeof firebase !== 'undefined' && firebase.app) {
-                    console.log('✅ Firebase loaded successfully');
-                    resolve();
-                } else {
-                    console.log('⏳ Waiting for Firebase...');
-                    setTimeout(checkFirebase, 100);
-                }
-            };
-            
-            // Таймаут 10 секунд
-            setTimeout(() => {
-                reject(new Error('Firebase loading timeout'));
-            }, 10000);
-            
-            checkFirebase();
-        });
-    }
+async waitForFirebase() {
+    return new Promise((resolve, reject) => {
+        const checkFirebase = () => {
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                console.log('✅ Firebase loaded and initialized');
+                resolve();
+            } else {
+                console.log('⏳ Waiting for Firebase initialization...');
+                setTimeout(checkFirebase, 100);
+            }
+        };
+        
+        // Таймаут 10 секунд
+        setTimeout(() => {
+            reject(new Error('Firebase initialization timeout'));
+        }, 10000);
+        
+        checkFirebase();
+    });
+}
 
     // ... остальные методы остаются без изменений
 
