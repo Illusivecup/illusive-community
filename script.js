@@ -1,6 +1,30 @@
+// === ЗАЩИТА ОТ ДВОЙНОЙ ЗАГРУЗКИ ===
+if (window.illusiveAppInitialized) {
+    console.log('🛑 Script already loaded, skipping...');
+    throw new Error('Script already loaded');
+}
+window.illusiveAppInitialized = true;
+
 // === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 let currentUser = null;
 let userProfile = null;
+
+// === ПРОВЕРКА FIREBASE ===
+function waitForFirebase() {
+    return new Promise((resolve) => {
+        const checkFirebase = () => {
+            if (window.firebase && window.firebase.auth) {
+                console.log('✅ Firebase loaded');
+                resolve();
+            } else {
+                console.log('⏳ Waiting for Firebase...');
+                setTimeout(checkFirebase, 100);
+            }
+        };
+        checkFirebase();
+    });
+}
+
 
 // === ОСНОВНАЯ ИНИЦИАЛИЗАЦИЯ ===
 async function initializeApp() {
