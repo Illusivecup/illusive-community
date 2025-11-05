@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Illusive Community - Matchmaking Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;500&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script type="module" src="firebase-config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Анимированный фон -->
+        <div class="animated-bg" id="animatedBg"></div>
+        
+        <!-- Статус подключения -->
+        <div id="connectionStatus" class="connection-status hidden">
+            <span class="status-dot"></span>
+            <span class="status-text">Подключение...</span>
+        </div>
+
+        <header class="main-header">
+            <h1 class="main-title">
+                <span class="title-main">Illusive</span>
+                <span class="title-highlight">Community</span>
+                <span class="title-date">Matchmaking Platform</span>
+            </h1>
+        </header>
+
+        <main class="main-content">
+            <!-- Навигация -->
+            <div class="navigation-grid">
+                <div class="nav-item">
+                    <button class="nav-btn profile-btn" id="profileBtn">
+                        <span class="btn-icon">👤</span>
+                        Профиль
+                    </button>
+                </div>
+
+                <div class="nav-item">
+                    <button class="nav-btn friends-btn" id="friendsBtn">
+                        <span class="btn-icon">👥</span>
+                        Друзья
+                    </button>
+                </div>
+
+                <div class="nav-item">
+                    <button class="nav-btn teams-list-btn" id="teamsListBtn">
+                        <span class="btn-icon">📋</span>
+                        Команды
+                    </button>
+                </div>
+
+                <div class="nav-item">
+                    <button class="nav-btn team-btn" id="teamBtn">
+                        <span class="btn-icon">🏆</span>
+                        Моя команда
+                    </button>
+                </div>
+
+                <div class="nav-item">
+                    <button class="nav-btn notification-btn" id="notificationBtn">
+                        <span class="btn-icon">🔔</span>
+                        Уведомления
+                        <span id="notificationBadge" class="notification-badge hidden">0</span>
+                    </button>
+                </div>
+
+                <!-- Новые кнопки -->
+                <div class="nav-item">
+                    <button class="nav-btn matches-btn" id="matchesBtn">
+                        <span class="btn-icon">🎮</span>
+                        Матчапы
+                    </button>
+                </div>
+
+                <div class="nav-item">
+                    <button class="nav-btn news-btn" id="newsBtn">
+                        <span class="btn-icon">📰</span>
+                        Новости
+                    </button>
+                </div>
+
+                <div class="nav-item">
+                    <button class="nav-btn leaderboards-btn" id="leaderboardsBtn">
+                        <span class="btn-icon">🏅</span>
+                        Leaderboards
+                    </button>
+                </div>
+            </div>
+
+            <!-- Область контента -->
+            <div class="content-area">
+                <!-- Экран авторизации -->
+                <div id="authContent" class="content-section">
+                    <div class="auth-container">
+                        <div class="auth-card">
+                            <h2 class="auth-title">Добро пожаловать!</h2>
+                            <div class="auth-tabs">
+                                <button class="auth-tab-btn active" data-tab="login">Вход</button>
+                                <button class="auth-tab-btn" data-tab="register">Регистрация</button>
+                            </div>
+                            
+                            <div id="loginTab" class="auth-tab-pane active">
+                                <form id="loginForm">
+                                    <div class="form-group">
+                                        <label for="loginUsername">Email:</label>
+                                        <input type="email" id="loginUsername" class="form-input" placeholder="Введите ваш email" required autocomplete="email">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="loginPassword">Пароль:</label>
+                                        <input type="password" id="loginPassword" class="form-input" placeholder="Введите пароль" required autocomplete="current-password">
+                                    </div>
+                                    <button type="submit" id="loginBtn" class="auth-btn">Войти</button>
+                                    <div id="loginMessage" class="auth-message"></div>
+                                </form>
+                            </div>
+                            
+                            <div id="registerTab" class="auth-tab-pane">
+                                <form id="registerForm">
+                                    <div class="form-group">
+                                        <label for="registerUsername">Email:</label>
+                                        <input type="email" id="registerUsername" class="form-input" placeholder="Введите ваш email" required autocomplete="email">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="registerNickname">Никнейм:</label>
+                                        <input type="text" id="registerNickname" class="form-input" placeholder="Ваш игровой никнейм" required autocomplete="nickname">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="registerTelegram">Telegram:</label>
+                                        <input type="text" id="registerTelegram" class="form-input" placeholder="@username" autocomplete="username">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="registerPassword">Пароль:</label>
+                                        <input type="password" id="registerPassword" class="form-input" placeholder="Придумайте пароль" required minlength="6" autocomplete="new-password">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="confirmPassword">Повторите пароль:</label>
+                                        <input type="password" id="confirmPassword" class="form-input" placeholder="Повторите пароль" required autocomplete="new-password">
+                                    </div>
+                                    <button type="submit" id="registerBtn" class="auth-btn">Зарегистрироваться</button>
+                                    <div id="registerMessage" class="auth-message"></div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Профиль -->
+                <div id="profileContent" class="content-section hidden">
+                    <div class="section-header">
+                        <h2>👤 Мой Профиль</h2>
+                        <p>Настройте вашу игровую информацию</p>
+                    </div>
+                    <div class="profile-container">
+                        <div class="profile-card">
+                            <div class="profile-header">
+                                <div class="profile-avatar" id="profileAvatar">
+                                    <img id="avatarImage" src="" alt="Аватар" style="display: none; width: 100%; height: 100%; border-radius: 50%;">
+                                    <span class="avatar-icon" id="defaultAvatar">👤</span>
+                                </div>
+                                <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+                                <button id="changeAvatarBtn" class="add-btn" style="margin-top: 10px;">📷 Сменить аватар</button>
+                                <div class="profile-info">
+                                    <h3 id="profileUsername">Гость</h3>
+                                    <p class="profile-id" id="profileUserId">ID: ---</p>
+                                </div>
+                            </div>
+                            
+                            <div class="profile-form">
+                                <div class="form-group">
+                                    <label for="profileNickname">Никнейм в игре:</label>
+                                    <input type="text" id="profileNickname" class="form-input" placeholder="Введите ваш никнейм" autocomplete="nickname">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="profileMMR">MMR:</label>
+                                    <input type="number" id="profileMMR" class="form-input" placeholder="Ваш MMR" min="0" max="10000">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="profilePosition">Позиция:</label>
+                                    <select id="profilePosition" class="form-input">
+                                        <option value="">Выберите позицию</option>
+                                        <option value="carry">Керри</option>
+                                        <option value="mid">Мидер</option>
+                                        <option value="offlane">Оффлейнер</option>
+                                        <option value="support4">Саппорт 4</option>
+                                        <option value="support5">Саппорт 5</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="profileTelegram">Telegram:</label>
+                                    <input type="text" id="profileTelegram" class="form-input" placeholder="@username" autocomplete="username">
+                                </div>
+                                
+                                <div class="form-actions">
+                                    <button id="saveProfileBtn" class="save-btn">💾 Сохранить профиль</button>
+                                    <button id="logoutBtn" class="cancel-btn">🚪 Выйти</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Друзья -->
+                <div id="friendsContent" class="content-section hidden">
+                    <div class="section-header">
+                        <h2>👥 Друзья</h2>
+                        <p>Управление вашим списком друзей</p>
+                    </div>
+                    <div class="friends-container">
+                        <div class="friends-search">
+                            <select id="friendSearchType" class="form-input">
+                                <option value="nickname">По никнейму</option>
+                                <option value="telegram">По Telegram</option>
+                                <option value="userId">По ID пользователя</option>
+                            </select>
+                            <input type="text" id="friendSearch" class="form-input" placeholder="Введите данные для поиска">
+                            <button id="searchFriendBtn" class="add-btn">🔍 Найти</button>
+                        </div>
+                        <div id="friendSearchResults" class="friend-search-results">
+                            <!-- Результаты поиска будут здесь -->
+                        </div>
+                        <div id="friendsList" class="friends-list">
+                            <!-- Список друзей будет здесь -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Список команд -->
+                <div id="teamsContent" class="content-section hidden">
+                    <div class="section-header">
+                        <h2>📋 Список команд</h2>
+                        <p>Найдите подходящую команду или посмотрите состав других команд</p>
+                    </div>
+                    
+                    <div class="teams-container">
+                        <div class="teams-tabs">
+                            <button class="team-tab-btn active" onclick="switchTeamTab('fullTeams')">Полный состав</button>
+                            <button class="team-tab-btn" onclick="switchTeamTab('incompleteTeams')">Неполный состав</button>
+                        </div>
+                        
+                        <div id="fullTeams" class="team-tab-pane active">
+                            <div class="teams-list" id="fullTeamsList">
+                                <!-- Полные команды будут загружены здесь -->
+                            </div>
+                        </div>
+                        
+                        <div id="incompleteTeams" class="team-tab-pane">
+                            <div class="teams-list" id="incompleteTeamsList">
+                                <!-- Команды с неполным составом будут загружены здесь -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Команда -->
+                <div id="teamContent" class="content-section hidden">
+                    <div class="section-header">
+                        <h2>🏆 Моя Команда</h2>
+                        <p>Создайте или присоединитесь к команде</p>
+                    </div>
+                    <div class="team-container">
+                        <!-- Состояние без команды -->
+                        <div id="noTeamSection" class="team-section">
+                            <div class="team-actions">
+                                <button id="createTeamBtn" class="save-btn">➕ Создать команду</button>
+                                <button id="joinTeamBtn" class="add-btn">🔗 Присоединиться к команде</button>
+                            </div>
+                        </div>
+
+                        <!-- Состояние с командой - новая карточка-визитка -->
+                        <div id="teamSection" class="team-section hidden">
+                            <div class="team-visiting-card" id="teamVisitingCard">
+                                <div class="card-header">
+                                    <div class="header-highlight"></div>
+                                    <h2 class="team-name-bublas" id="teamCardName">Название команды</h2>
+                                    <p class="team-subtitle" id="teamCardSlogan">Слоган команды</p>
+                                </div>
+                                
+                                <div class="team-card-content">
+                                    <div class="players-section-bublas">
+                                        <h3 class="section-title-bublas">Состав команды</h3>
+                                        <div class="player-grid-bublas" id="teamPlayersGrid">
+                                            <!-- Игроки будут добавляться здесь -->
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="stats-section-bublas">
+                                        <div class="mmr-display-bublas">
+                                            <div class="mmr-label-bublas">Средний MMR команды</div>
+                                            <div class="mmr-value-bublas" id="teamAverageMMR">0</div>
+                                        </div>
+                                        
+                                        <div class="tournament-section-bublas">
+                                            <div class="tournament-text-bublas">Участие в турнирах</div>
+                                            <div class="tournament-badge-bublas" id="teamTournamentStatus">Не участвует</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="team-footer-bublas">
+                                    <div>Капитан команды: <span id="teamCaptainName">Не указан</span></div>
+                                    <div>Дата создания: <span id="teamCreationDate">--.--.----</span></div>
+                                    
+                                    <!-- Кнопки управления командой -->
+                                    <div class="team-management-actions">
+                                        <button id="invitePlayersBtn" class="edit-team-btn">👥 Пригласить игроков</button>
+                                        <button id="editTeamBtn" class="edit-team-btn">⚙️ Редактировать команду</button>
+                                        <button id="deleteTeamBtn" class="cancel-btn" style="background: var(--accent-danger);">🗑️ Удалить команду</button>
+                                        <button id="leaveTeamBtn" class="cancel-btn">🚪 Покинуть команду</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Уведомления -->
+                <div id="notificationContent" class="content-section hidden">
+                    <div class="section-header">
+                        <h2>🔔 Уведомления</h2>
+                        <p>Системные уведомления и история</p>
+                    </div>
+                    <div class="notification-container">
+                        <div class="notification-tabs">
+                            <button class="notification-tab-btn active" data-tab="systemNotifications">Системные</button>
+                            <button class="notification-tab-btn" data-tab="notificationHistory">История</button>
+                        </div>
+                        
+                        <div id="systemNotifications" class="notification-tab-pane active">
+                            <div id="systemNotificationsList" class="notifications-list">
+                                <!-- Системные уведомления -->
+                            </div>
+                        </div>
+                        
+                        <div id="notificationHistory" class="notification-tab-pane">
+                            <div id="notificationHistoryList" class="notifications-list">
+                                <!-- История уведомлений -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно создания команды -->
+    <div id="createTeamModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ Создать команду</h2>
+                <button class="close-modal" id="closeCreateTeamModal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="createTeamForm">
+                    <div class="form-group">
+                        <label for="teamNameInput">Название команды:</label>
+                        <input type="text" id="teamNameInput" class="form-input" placeholder="Введите название команды" required autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="teamSloganInput">Слоган команды:</label>
+                        <input type="text" id="teamSloganInput" class="form-input" placeholder="Краткий слоган или девиз команды" autocomplete="off">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" id="confirmCreateTeamBtn" class="save-btn">💾 Создать команду</button>
+                        <button type="button" id="cancelCreateTeamBtn" class="cancel-btn">❌ Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно присоединения к команде -->
+    <div id="joinTeamModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔗 Присоединиться к команде</h2>
+                <button class="close-modal" id="closeJoinTeamModal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="joinTeamForm">
+                    <div class="form-group">
+                        <label for="teamIdInput">ID команды:</label>
+                        <input type="text" id="teamIdInput" class="form-input" placeholder="Введите ID команды" required autocomplete="off">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" id="confirmJoinTeamBtn" class="save-btn">🎯 Присоединиться</button>
+                        <button type="button" id="cancelJoinTeamBtn" class="cancel-btn">❌ Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно приглашения игроков -->
+    <div id="invitePlayersModal" class="modal hidden">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2>👥 Пригласить игроков в команду</h2>
+                <button class="close-modal" id="closeInvitePlayersModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="friendSearchInput">Поиск друзей:</label>
+                    <input type="text" id="friendSearchInput" class="form-input" placeholder="Введите имя друга..." autocomplete="off">
+                    <button id="searchFriendsBtn" class="add-btn" style="margin-top: 10px;">🔍 Найти</button>
+                </div>
+                
+                <div id="friendsSearchResults" class="friends-search-results">
+                    <!-- Результаты поиска друзей -->
+                </div>
+                
+                <div class="form-group">
+                    <h4>Ваши друзья:</h4>
+                    <div id="friendsListForInvite" class="friends-list">
+                        <!-- Список друзей для приглашения -->
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button id="cancelInvitePlayersBtn" class="cancel-btn">❌ Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования команды -->
+    <div id="editTeamModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>⚙️ Редактирование команды</h2>
+                <button class="close-modal" onclick="closeEditTeamModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="team-management-info">
+                    <p style="margin-bottom: 20px; color: var(--text-secondary); text-align: center;">
+                        Здесь вы можете управлять составом команды, изменять роли и MMR игроков, 
+                        настраивать участие в турнирах и передавать капитанство.
+                    </p>
+                </div>
+                <div class="team-members-list" id="teamMembersEditList">
+                    <!-- Список членов команды для редактирования -->
+                </div>
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button class="cancel-btn" onclick="closeEditTeamModal()">❌ Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно удаления команды -->
+    <div id="deleteTeamModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🗑️ Удаление команды</h2>
+                <button class="close-modal" id="closeDeleteTeamModal">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="deleteTeamForm">
+                    <div class="form-group">
+                        <p style="color: var(--accent-danger); margin-bottom: 15px; text-align: center;">
+                            ⚠️ ВНИМАНИЕ: Это действие необратимо! Все данные команды будут удалены.
+                        </p>
+                        <label for="confirmTeamNameInput">Для подтверждения введите название команды: <strong id="teamNameToDelete"></strong></label>
+                        <input type="text" id="confirmTeamNameInput" class="form-input" placeholder="Введите название команды" required autocomplete="off">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" id="confirmDeleteTeamBtn" class="cancel-btn" style="background: var(--accent-danger);">🗑️ Удалить команду</button>
+                        <button type="button" id="cancelDeleteTeamBtn" class="save-btn">❌ Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
