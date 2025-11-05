@@ -22,44 +22,62 @@ class IllusiveApp {
     }
 
     initializeFirebaseMethods() {
-        // Проверяем, что Firebase загружен
-        if (typeof firebase === 'undefined') {
-            console.error('❌ Firebase not loaded');
+    // Проверяем, что Firebase загружен
+    if (typeof firebase === 'undefined') {
+        console.error('❌ Firebase not loaded');
+        return;
+    }
+
+    // Убеждаемся, что Firebase инициализирован
+    if (!firebase.apps.length) {
+        if (window.firebaseConfig) {
+            try {
+                firebase.initializeApp(window.firebaseConfig);
+                console.log('🔥 Firebase initialized in script.js');
+            } catch (error) {
+                console.error('❌ Firebase initialization failed:', error);
+            }
+        } else {
+            console.error('❌ Firebase config not found');
             return;
         }
-
-        // Создаем удобные алиасы для Firebase методов (версия 9.x)
-        this.firebase = {
-            // App
-            app: firebase.app,
-            
-            // Auth methods
-            auth: firebase.auth,
-            createUserWithEmailAndPassword: firebase.auth().createUserWithEmailAndPassword,
-            signInWithEmailAndPassword: firebase.auth().signInWithEmailAndPassword,
-            signOut: firebase.auth().signOut,
-            onAuthStateChanged: firebase.auth().onAuthStateChanged,
-            
-            // Database methods
-            database: firebase.database,
-            ref: firebase.database().ref,
-            set: (ref, data) => ref.set(data),
-            get: (ref) => ref.get(),
-            update: (ref, data) => ref.update(data),
-            push: (ref) => ref.push(),
-            onValue: (ref, callback) => ref.on('value', callback),
-            off: (ref, eventType, callback) => ref.off(eventType, callback),
-            remove: (ref) => ref.remove(),
-            
-            // Storage methods
-            storage: firebase.storage,
-            storageRef: firebase.storage().ref,
-            uploadBytes: (ref, file) => ref.put(file),
-            getDownloadURL: (ref) => ref.getDownloadURL()
-        };
-
-        console.log('✅ Firebase methods initialized');
     }
+
+    // Создаем удобные алиасы для Firebase методов (Firebase 9.x)
+    this.firebase = {
+        // App
+        app: firebase.app,
+        
+        // Auth methods - правильный синтаксис для Firebase 9.x
+        auth: firebase.auth(),
+        createUserWithEmailAndPassword: (email, password) => 
+            firebase.auth().createUserWithEmailAndPassword(email, password),
+        signInWithEmailAndPassword: (email, password) => 
+            firebase.auth().signInWithEmailAndPassword(email, password),
+        signOut: () => firebase.auth().signOut(),
+        onAuthStateChanged: (callback) => 
+            firebase.auth().onAuthStateChanged(callback),
+        
+        // Database methods
+        database: firebase.database(),
+        ref: (path) => firebase.database().ref(path),
+        set: (ref, data) => ref.set(data),
+        get: (ref) => ref.get(),
+        update: (ref, data) => ref.update(data),
+        push: (ref) => ref.push(),
+        onValue: (ref, callback) => ref.on('value', callback),
+        off: (ref, eventType, callback) => ref.off(eventType, callback),
+        remove: (ref) => ref.remove(),
+        
+        // Storage methods
+        storage: firebase.storage(),
+        storageRef: (path) => firebase.storage().ref(path),
+        uploadBytes: (ref, file) => ref.put(file),
+        getDownloadURL: (ref) => ref.getDownloadURL()
+    };
+
+    console.log('✅ Firebase methods initialized');
+}
 
     async init() {
         if (this.isInitialized) {
@@ -163,30 +181,32 @@ class IllusiveApp {
     }
 
     setupAuthStateListener() {
-        if (!window.firebase) {
-            console.error('❌ Firebase not available');
-            return;
-        }
+    if (!this.firebase || !this.firebase.auth) {
+        console.error('❌ Firebase auth not available');
+        return;
+    }
 
-        window.firebase.onAuthStateChanged(window.firebase.auth, async (user) => {
-            if (user) {
-                console.log('👤 Пользователь авторизован:', user.email);
-                this.currentUser = user;
-                try {
-                    await this.loadUserProfile(user.uid);
+    // Правильный синтаксис для Firebase 9.x
+    this.firebase.onAuthStateChanged((user) => {
+        if (user) {
+            console.log('👤 Пользователь авторизован:', user.email);
+            this.currentUser = user;
+            this.loadUserProfile(user.uid)
+                .then(() => {
                     this.showAuthenticatedUI();
-                } catch (error) {
+                })
+                .catch(error => {
                     console.error('❌ Ошибка загрузки профиля:', error);
                     this.showAuthenticatedUI();
-                }
-            } else {
-                console.log('👤 Пользователь не авторизован');
-                this.currentUser = null;
-                this.userProfile = null;
-                this.showUnauthenticatedUI();
-            }
-        });
-    }
+                });
+        } else {
+            console.log('👤 Пользователь не авторизован');
+            this.currentUser = null;
+            this.userProfile = null;
+            this.showUnauthenticatedUI();
+        }
+    });
+}
 
     async loadUserProfile(userId) {
         try {
@@ -224,56 +244,98 @@ class IllusiveApp {
     }
 
     // === ФУНКЦИИ АВТОРИЗАЦИИ ===
-    async registerUser(email, password, confirmPassword, nickname, telegram) {
-        const messageElement = document.getElementById('registerMessage');
-        
-        if (!email || !password || !confirmPassword || !nickname) {
-            this.showAuthMessage('❌ Заполните все обязательные поля', 'error', messageElement);
-            return;
-        }
-        
-        if (password !== confirmPassword) {
-            this.showAuthMessage('❌ Пароли не совпадают', 'error', messageElement);
-            return;
-        }
-        
-        if (password.length < 6) {
-            this.showAuthMessage('❌ Пароль должен содержать минимум 6 символов', 'error', messageElement);
-            return;
-        }
-        
-        try {
-            this.showAuthMessage('⏳ Регистрация...', 'info', messageElement);
-            
-            const userCredential = await window.firebase.createUserWithEmailAndPassword(
-                window.firebase.auth, email, password
-            );
-            
-            await this.createUserProfile(userCredential.user.uid, email, nickname, telegram);
-            this.showAuthMessage('✅ Регистрация успешна!', 'success', messageElement);
-            
-            // Очищаем поля
-            document.getElementById('registerUsername').value = '';
-            document.getElementById('registerNickname').value = '';
-            document.getElementById('registerTelegram').value = '';
-            document.getElementById('registerPassword').value = '';
-            document.getElementById('confirmPassword').value = '';
-            
-        } catch (error) {
-            console.error('❌ Ошибка регистрации:', error);
-            let errorMessage = '❌ Ошибка регистрации';
-            
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = '❌ Этот email уже используется';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = '❌ Неверный формат email';
-            } else if (error.code === 'auth/weak-password') {
-                errorMessage = '❌ Слишком слабый пароль';
-            }
-            
-            this.showAuthMessage(errorMessage, 'error', messageElement);
-        }
+async registerUser(email, password, confirmPassword, nickname, telegram) {
+    const messageElement = document.getElementById('registerMessage');
+    
+    if (!email || !password || !confirmPassword || !nickname) {
+        this.showAuthMessage('❌ Заполните все обязательные поля', 'error', messageElement);
+        return;
     }
+    
+    if (password !== confirmPassword) {
+        this.showAuthMessage('❌ Пароли не совпадают', 'error', messageElement);
+        return;
+    }
+    
+    if (password.length < 6) {
+        this.showAuthMessage('❌ Пароль должен содержать минимум 6 символов', 'error', messageElement);
+        return;
+    }
+    
+    try {
+        this.showAuthMessage('⏳ Регистрация...', 'info', messageElement);
+        
+        // Правильный вызов для Firebase 9.x
+        const userCredential = await this.firebase.createUserWithEmailAndPassword(email, password);
+        
+        await this.createUserProfile(userCredential.user.uid, email, nickname, telegram);
+        this.showAuthMessage('✅ Регистрация успешна!', 'success', messageElement);
+        
+        // Очищаем поля
+        document.getElementById('registerUsername').value = '';
+        document.getElementById('registerNickname').value = '';
+        document.getElementById('registerTelegram').value = '';
+        document.getElementById('registerPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        
+    } catch (error) {
+        console.error('❌ Ошибка регистрации:', error);
+        let errorMessage = '❌ Ошибка регистрации';
+        
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = '❌ Этот email уже используется';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = '❌ Неверный формат email';
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = '❌ Слишком слабый пароль';
+        }
+        
+        this.showAuthMessage(errorMessage, 'error', messageElement);
+    }
+}
+
+async loginUser(email, password) {
+    const messageElement = document.getElementById('loginMessage');
+    
+    if (!email || !password) {
+        this.showAuthMessage('❌ Заполните все поля', 'error', messageElement);
+        return;
+    }
+    
+    try {
+        this.showAuthMessage('⏳ Вход...', 'info', messageElement);
+        
+        // Правильный вызов для Firebase 9.x
+        await this.firebase.signInWithEmailAndPassword(email, password);
+        this.showAuthMessage('✅ Вход успешен!', 'success', messageElement);
+        
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+        
+    } catch (error) {
+        console.error('❌ Ошибка входа:', error);
+        let errorMessage = '❌ Ошибка входа';
+        
+        if (error.code === 'auth/user-not-found') {
+            errorMessage = '❌ Пользователь не найден';
+        } else if (error.code === 'auth/wrong-password') {
+            errorMessage = '❌ Неверный пароль';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = '❌ Неверный формат email';
+        }
+        
+        this.showAuthMessage(errorMessage, 'error', messageElement);
+    }
+}
+
+async logoutUser() {
+    try {
+        await this.firebase.signOut();
+        console.log('✅ Пользователь вышел');
+    } catch (error) {
+        console.error('❌ Ошибка выхода:', error);
+    }
+}
 
     async createUserProfile(userId, email, nickname, telegram) {
         const profileData = {
