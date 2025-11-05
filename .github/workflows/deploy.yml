@@ -1,56 +1,32 @@
-name: Deploy to GitHub Pages
+- name: Create Firebase Config
+  run: |
+    cat > firebase-config.js << 'EOF'
+    // Auto-generated Firebase config
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getDatabase, ref, set, get, update, push, onValue, off, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-on:
-  push:
-    branches: [main]
+    const firebaseConfig = {
+      apiKey: "${{ secrets.FIREBASE_API_KEY }}",
+      authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+      databaseURL: "${{ secrets.FIREBASE_DATABASE_URL }}",
+      projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
+      storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
+      messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
+      appId: "${{ secrets.FIREBASE_APP_ID }}"
+    };
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Create Firebase Config
-        run: |
-          cat > firebase-config.js << 'EOF'
-          // Auto-generated Firebase config
-          import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-          import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-          import { getDatabase, ref, set, get, update, push, onValue, off, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-          import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+    const storage = getStorage(app);
 
-          const firebaseConfig = {
-            apiKey: "${{ secrets.FIREBASE_API_KEY }}",
-            authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
-            databaseURL: "${{ secrets.FIREBASE_DATABASE_URL }}",
-            projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
-            storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
-            messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
-            appId: "${{ secrets.FIREBASE_APP_ID }}"
-          };
+    window.firebase = {
+      auth, database, storage, ref, set, get, update, push, onValue, off, remove,
+      storageRef, uploadBytes, getDownloadURL, createUserWithEmailAndPassword,
+      signInWithEmailAndPassword, signOut, onAuthStateChanged
+    };
 
-          const app = initializeApp(firebaseConfig);
-          const auth = getAuth(app);
-          const database = getDatabase(app);
-          const storage = getStorage(app);
-
-          window.firebase = {
-            auth, database, storage, ref, set, get, update, push, onValue, off, remove,
-            storageRef, uploadBytes, getDownloadURL, createUserWithEmailAndPassword,
-            signInWithEmailAndPassword, signOut, onAuthStateChanged
-          };
-
-          console.log('Firebase initialized');
-          EOF
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
-          force_orphan: true
+    console.log('🔥 Firebase успешно инициализирован на GitHub Pages');
+    EOF
