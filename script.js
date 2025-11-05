@@ -21,34 +21,23 @@ class IllusiveApp {
         this.uploadAvatar = this.uploadAvatar.bind(this);
     }
 
-    initializeFirebaseMethods() {
-    // Проверяем, что Firebase загружен
+initializeFirebaseMethods() {
     if (typeof firebase === 'undefined') {
         console.error('❌ Firebase not loaded');
         return;
     }
 
-    // Убеждаемся, что Firebase инициализирован
-    if (!firebase.apps.length) {
-        if (window.firebaseConfig) {
-            try {
-                firebase.initializeApp(window.firebaseConfig);
-                console.log('🔥 Firebase initialized in script.js');
-            } catch (error) {
-                console.error('❌ Firebase initialization failed:', error);
-            }
-        } else {
-            console.error('❌ Firebase config not found');
-            return;
-        }
+    // Убедитесь, что Firebase инициализирован
+    if (!firebase.apps.length && window.firebaseConfig) {
+        firebase.initializeApp(window.firebaseConfig);
     }
 
-    // Создаем удобные алиасы для Firebase методов (Firebase 9.x)
+    // Правильные методы для Firebase 9.x
     this.firebase = {
         // App
         app: firebase.app,
         
-        // Auth methods - правильный синтаксис для Firebase 9.x
+        // Auth methods
         auth: firebase.auth(),
         createUserWithEmailAndPassword: (email, password) => 
             firebase.auth().createUserWithEmailAndPassword(email, password),
@@ -58,16 +47,16 @@ class IllusiveApp {
         onAuthStateChanged: (callback) => 
             firebase.auth().onAuthStateChanged(callback),
         
-        // Database methods
-        database: firebase.database(),
-        ref: (path) => firebase.database().ref(path),
-        set: (ref, data) => ref.set(data),
-        get: (ref) => ref.get(),
-        update: (ref, data) => ref.update(data),
-        push: (ref) => ref.push(),
-        onValue: (ref, callback) => ref.on('value', callback),
-        off: (ref, eventType, callback) => ref.off(eventType, callback),
-        remove: (ref) => ref.remove(),
+        // Database methods - правильный синтаксис для Firebase 9.x
+        database: firebase.database,
+        ref: firebase.database.ref,
+        set: firebase.database.set,
+        get: firebase.database.get,
+        update: firebase.database.update,
+        push: firebase.database.push,
+        onValue: firebase.database.onValue,
+        off: firebase.database.off,
+        remove: firebase.database.remove,
         
         // Storage methods
         storage: firebase.storage(),
@@ -208,40 +197,43 @@ class IllusiveApp {
     });
 }
 
-    async loadUserProfile(userId) {
-        try {
-            const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `users/${userId}`));
-            if (snapshot.exists()) {
-                this.userProfile = snapshot.val();
-                
-                if (!this.userProfile.friends || !Array.isArray(this.userProfile.friends)) {
-                    this.userProfile.friends = [];
-                }
-                
-                console.log('📁 Профиль загружен');
-                this.updateProfileUI();
-                await this.updateLastOnline();
-            } else {
-                console.log('📁 Профиль не найден, создаем новый');
-                await this.createUserProfile(userId, this.currentUser.email, '', '');
-            }
-        } catch (error) {
-            console.error('❌ Ошибка загрузки профиля:', error);
-            throw error;
-        }
-    }
-
-    async updateLastOnline() {
-        if (!this.currentUser) return;
+async loadUserProfile(userId) {
+    try {
+        const userRef = this.firebase.ref(this.firebase.database, `users/${userId}`);
+        const snapshot = await this.firebase.get(userRef);
         
-        try {
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${this.currentUser.uid}`), {
-                lastOnline: Date.now()
-            });
-        } catch (error) {
-            console.error('❌ Ошибка обновления времени онлайна:', error);
+        if (snapshot.exists()) {
+            this.userProfile = snapshot.val();
+            
+            if (!this.userProfile.friends || !Array.isArray(this.userProfile.friends)) {
+                this.userProfile.friends = [];
+            }
+            
+            console.log('📁 Профиль загружен');
+            this.updateProfileUI();
+            await this.updateLastOnline();
+        } else {
+            console.log('📁 Профиль не найден, создаем новый');
+            await this.createUserProfile(userId, this.currentUser.email, '', '');
         }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки профиля:', error);
+        throw error;
     }
+}
+
+async updateLastOnline() {
+    if (!this.currentUser) return;
+    
+    try {
+        const userRef = this.firebase.ref(this.firebase.database, `users/${this.currentUser.uid}`);
+        await this.firebase.update(userRef, {
+            lastOnline: Date.now()
+        });
+    } catch (error) {
+        console.error('❌ Ошибка обновления времени онлайна:', error);
+    }
+}
 
     // === ФУНКЦИИ АВТОРИЗАЦИИ ===
 async registerUser(email, password, confirmPassword, nickname, telegram) {
@@ -337,31 +329,32 @@ async logoutUser() {
     }
 }
 
-    async createUserProfile(userId, email, nickname, telegram) {
-        const profileData = {
-            username: email.split('@')[0],
-            nickname: nickname,
-            telegram: telegram || '',
-            mmr: 0,
-            position: '',
-            userId: userId,
-            avatarUrl: '',
-            friends: [],
-            friendRequests: [],
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            lastOnline: Date.now()
-        };
-        
-        try {
-            await window.firebase.set(window.firebase.ref(window.firebase.database, `users/${userId}`), profileData);
-            this.userProfile = profileData;
-            this.updateProfileUI();
-        } catch (error) {
-            console.error('❌ Ошибка создания профиля:', error);
-            throw error;
-        }
+async createUserProfile(userId, email, nickname, telegram) {
+    const profileData = {
+        username: email.split('@')[0],
+        nickname: nickname,
+        telegram: telegram || '',
+        mmr: 0,
+        position: '',
+        userId: userId,
+        avatarUrl: '',
+        friends: [],
+        friendRequests: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        lastOnline: Date.now()
+    };
+    
+    try {
+        const userRef = this.firebase.ref(this.firebase.database, `users/${userId}`);
+        await this.firebase.set(userRef, profileData);
+        this.userProfile = profileData;
+        this.updateProfileUI();
+    } catch (error) {
+        console.error('❌ Ошибка создания профиля:', error);
+        throw error;
     }
+}
 
     async loginUser(email, password) {
         const messageElement = document.getElementById('loginMessage');
@@ -438,41 +431,42 @@ async logoutUser() {
     }
 
     // === СИСТЕМА АВАТАРОК ===
-    async uploadAvatar(file) {
-        if (!this.currentUser) {
-            alert('❌ Пользователь не авторизован');
-            return;
-        }
-        
-        if (file.size > 2 * 1024 * 1024) {
-            alert('❌ Файл слишком большой. Максимальный размер: 2MB');
-            return;
-        }
-        
-        if (!file.type.startsWith('image/')) {
-            alert('❌ Пожалуйста, выберите изображение');
-            return;
-        }
-        
-        try {
-            alert('⏳ Загружаем аватарку...');
-            const base64String = await this.fileToBase64(file);
-            
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${this.currentUser.uid}`), {
-                avatarUrl: base64String,
-                updatedAt: Date.now()
-            });
-            
-            this.userProfile.avatarUrl = base64String;
-            this.updateAvatarUI();
-            
-            alert('✅ Аватар успешно обновлен!');
-            
-        } catch (error) {
-            console.error('❌ Ошибка загрузки аватара:', error);
-            alert('❌ Ошибка загрузки аватара: ' + error.message);
-        }
+async uploadAvatar(file) {
+    if (!this.currentUser) {
+        alert('❌ Пользователь не авторизован');
+        return;
     }
+    
+    if (file.size > 2 * 1024 * 1024) {
+        alert('❌ Файл слишком большой. Максимальный размер: 2MB');
+        return;
+    }
+    
+    if (!file.type.startsWith('image/')) {
+        alert('❌ Пожалуйста, выберите изображение');
+        return;
+    }
+    
+    try {
+        alert('⏳ Загружаем аватарку...');
+        const base64String = await this.fileToBase64(file);
+        
+        const userRef = this.firebase.ref(this.firebase.database, `users/${this.currentUser.uid}`);
+        await this.firebase.update(userRef, {
+            avatarUrl: base64String,
+            updatedAt: Date.now()
+        });
+        
+        this.userProfile.avatarUrl = base64String;
+        this.updateAvatarUI();
+        
+        alert('✅ Аватар успешно обновлен!');
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки аватара:', error);
+        alert('❌ Ошибка загрузки аватара: ' + error.message);
+    }
+}
 
     fileToBase64(file) {
         return new Promise((resolve, reject) => {
@@ -503,32 +497,33 @@ async logoutUser() {
     }
 
     // === УПРАВЛЕНИЕ ПРОФИЛЕМ ===
-    async saveProfile() {
-        if (!this.currentUser || !this.userProfile) return;
-        
-        const nickname = document.getElementById('profileNickname').value.trim();
-        const mmr = parseInt(document.getElementById('profileMMR').value) || 0;
-        const position = document.getElementById('profilePosition').value;
-        const telegram = document.getElementById('profileTelegram').value.trim();
-        
-        const updateData = {
-            nickname,
-            mmr,
-            position,
-            telegram,
-            updatedAt: Date.now()
-        };
-        
-        try {
-            await window.firebase.update(window.firebase.ref(window.firebase.database, `users/${this.currentUser.uid}`), updateData);
-            this.userProfile = { ...this.userProfile, ...updateData };
-            this.updateProfileUI();
-            alert('✅ Профиль сохранен!');
-        } catch (error) {
-            console.error('❌ Ошибка сохранения профиля:', error);
-            alert('❌ Ошибка сохранения профиля');
-        }
+async saveProfile() {
+    if (!this.currentUser || !this.userProfile) return;
+    
+    const nickname = document.getElementById('profileNickname').value.trim();
+    const mmr = parseInt(document.getElementById('profileMMR').value) || 0;
+    const position = document.getElementById('profilePosition').value;
+    const telegram = document.getElementById('profileTelegram').value.trim();
+    
+    const updateData = {
+        nickname,
+        mmr,
+        position,
+        telegram,
+        updatedAt: Date.now()
+    };
+    
+    try {
+        const userRef = this.firebase.ref(this.firebase.database, `users/${this.currentUser.uid}`);
+        await this.firebase.update(userRef, updateData);
+        this.userProfile = { ...this.userProfile, ...updateData };
+        this.updateProfileUI();
+        alert('✅ Профиль сохранен!');
+    } catch (error) {
+        console.error('❌ Ошибка сохранения профиля:', error);
+        alert('❌ Ошибка сохранения профиля');
     }
+}
 
     // === СИСТЕМА ДРУЗЕЙ ===
     async loadFriendsList() {
