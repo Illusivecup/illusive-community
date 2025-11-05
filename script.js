@@ -28,11 +28,8 @@ initializeFirebaseMethods() {
         return;
     }
 
-    // Используем глобальный Firebase объект
+    // Правильная инициализация для Firebase 9.x compat
     this.firebase = {
-        // App
-        app: firebase.app,
-        
         // Auth methods
         auth: firebase.auth(),
         createUserWithEmailAndPassword: (email, password) => 
@@ -43,16 +40,16 @@ initializeFirebaseMethods() {
         onAuthStateChanged: (callback) => 
             firebase.auth().onAuthStateChanged(callback),
         
-        // Database methods
+        // Database methods - правильный синтаксис для Firebase 9.x compat
         database: firebase.database,
-        ref: firebase.database.ref,
-        set: firebase.database.set,
-        get: firebase.database.get,
-        update: firebase.database.update,
-        push: firebase.database.push,
-        onValue: firebase.database.onValue,
-        off: firebase.database.off,
-        remove: firebase.database.remove,
+        ref: (db, path) => firebase.database().ref(path),
+        set: (ref, data) => ref.set(data),
+        get: (ref) => ref.get(),
+        update: (ref, data) => ref.update(data),
+        push: (ref, data) => ref.push(data),
+        onValue: (ref, callback) => ref.on('value', callback),
+        off: (ref, eventType = 'value', callback) => ref.off(eventType, callback),
+        remove: (ref) => ref.remove(),
         
         // Storage methods
         storage: firebase.storage(),
@@ -195,6 +192,7 @@ async waitForFirebase() {
 
 async loadUserProfile(userId) {
     try {
+        // Правильный синтаксис для Firebase 9.x
         const userRef = this.firebase.ref(this.firebase.database, `users/${userId}`);
         const snapshot = await this.firebase.get(userRef);
         
