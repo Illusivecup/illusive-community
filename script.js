@@ -350,47 +350,49 @@ async createUserProfile(userId, email, nickname, telegram) {
     }
 }
 
-    async loginUser(email, password) {
-        const messageElement = document.getElementById('loginMessage');
-        
-        if (!email || !password) {
-            this.showAuthMessage('❌ Заполните все поля', 'error', messageElement);
-            return;
-        }
-        
-        try {
-            this.showAuthMessage('⏳ Вход...', 'info', messageElement);
-            
-            await window.firebase.signInWithEmailAndPassword(window.firebase.auth, email, password);
-            this.showAuthMessage('✅ Вход успешен!', 'success', messageElement);
-            
-            document.getElementById('loginUsername').value = '';
-            document.getElementById('loginPassword').value = '';
-            
-        } catch (error) {
-            console.error('❌ Ошибка входа:', error);
-            let errorMessage = '❌ Ошибка входа';
-            
-            if (error.code === 'auth/user-not-found') {
-                errorMessage = '❌ Пользователь не найден';
-            } else if (error.code === 'auth/wrong-password') {
-                errorMessage = '❌ Неверный пароль';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = '❌ Неверный формат email';
-            }
-            
-            this.showAuthMessage(errorMessage, 'error', messageElement);
-        }
+async loginUser(email, password) {
+    const messageElement = document.getElementById('loginMessage');
+    
+    if (!email || !password) {
+        this.showAuthMessage('❌ Заполните все поля', 'error', messageElement);
+        return;
     }
+    
+    try {
+        this.showAuthMessage('⏳ Вход...', 'info', messageElement);
+        
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.signInWithEmailAndPassword(email, password);
+        this.showAuthMessage('✅ Вход успешен!', 'success', messageElement);
+        
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+        
+    } catch (error) {
+        console.error('❌ Ошибка входа:', error);
+        let errorMessage = '❌ Ошибка входа';
+        
+        if (error.code === 'auth/user-not-found') {
+            errorMessage = '❌ Пользователь не найден';
+        } else if (error.code === 'auth/wrong-password') {
+            errorMessage = '❌ Неверный пароль';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = '❌ Неверный формат email';
+        }
+        
+        this.showAuthMessage(errorMessage, 'error', messageElement);
+    }
+}
 
-    async logoutUser() {
-        try {
-            await window.firebase.signOut(window.firebase.auth);
-            console.log('✅ Пользователь вышел');
-        } catch (error) {
-            console.error('❌ Ошибка выхода:', error);
-        }
+async logoutUser() {
+    try {
+        // Используем this.firebase вместо window.firebase
+        await this.firebase.signOut();
+        console.log('✅ Пользователь вышел');
+    } catch (error) {
+        console.error('❌ Ошибка выхода:', error);
     }
+}
 
     showAuthMessage(message, type, element) {
         element.textContent = message;
