@@ -143,13 +143,15 @@ async init() {
             console.error('❌ Admin config not found');
             // Создаем временный конфиг для разработки
             this.adminConfig = {
-                adminEmail: "admin@illusive.local",
-                adminPassword: "IllusiveAdmin2024!",
-                superAdmins: ["admin@illusive.local"],
+                adminEmail: "dev@illusive.local",
+                adminPassword: "DevPassword123!",
+                superAdmins: ["dev@illusive.local"],
                 systemSettings: {
                     notificationCleanupDays: 30,
                     maxNotificationsPerUser: 50,
-                    autoBanThreshold: 3
+                    autoBanThreshold: 3,
+                    testMode: true,
+                    debugLogs: true
                 },
                 defaultAdminPermissions: [
                     "moderate", "edit_users", "edit_teams", "view_stats", "broadcast"
@@ -586,48 +588,288 @@ createFallbackAdminStructure() {
         this.loadTeamsList(searchTerm);
     }
 
-    async banUser(userId) {
-        if (!this.checkPermissions('moderate')) return;
+async banUser(userId) {
+    if (!this.checkPermissions('moderate')) return;
+    
+    const reason = prompt('Введите причину бана:');
+    if (!reason) return;
+    
+    try {
+        // 1. Получаем информацию о пользователе перед баном
+        const userSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `users/${userId}`)
+        );
         
-        const reason = prompt('Введите причину бана:');
-        if (!reason) return;
-        
-        try {
-            await this.app.firebase.update(this.app.firebase.ref(this.app.firebase.database, `users/${userId}`), {
-                isBanned: true,
-                banReason: reason,
-                bannedAt: Date.now(),
-                bannedBy: this.currentAdmin.email
-            });
-            
-            alert('✅ Пользователь забанен');
-            this.loadUsersList();
-            this.loadBannedUsers();
-        } catch (error) {
-            console.error('❌ Error banning user:', error);
-            alert('❌ Ошибка бана пользователя');
+        if (!userSnapshot.exists()) {
+            alert('❌ Пользователь не найден');
+            return;
         }
+        
+        const user = userSnapshot.val();
+        const userTeamId = user.teamId;
+        
+        // 2. Баним пользователя
+        await this.app.firebase.update(this.app.firebase.ref(this.app.firebase.database, `users/${userId}`), {
+            isBanned: true,
+            banReason: reason,
+            bannedAt: Date.now(),
+            bannedBy: this.currentAdmin.email,
+            // Сохраняем оригинальные данные для возможного восстановления
+            originalMMR: user.mmr || 0,
+            originalPosition: user.position || '',
+            bannedFromTeam: userTeamId || null
+        });
+        
+        // 3. Удаляем из команды (если есть)
+        if (userTeamId) {
+            await this.removeUserFromTeam(userId, userTeamId);
+        }
+        
+        // 4. Удаляем из лидербордов (обнуляем MMR)
+        await this.app.firebase.update(this.app.firebase.ref(this.app.firebase.database, `users/${userId}`), {
+            mmr: 0,
+            position: ''
+        });
+        
+        // 5. Удаляем все активные заявки пользователя
+        await this.removeUserApplications(userId);
+        
+        // 6. Отправляем уведомление пользователю
+        await this.sendBanNotification(userId, reason);
+        
+        alert('✅ Пользователь забанен и удален из всех систем');
+        this.loadUsersList();
+        this.loadBannedUsers();
+        
+    } catch (error) {
+        console.error('❌ Error banning user:', error);
+        alert('❌ Ошибка бана пользователя');
     }
+}
 
-    async unbanUser(userId) {
-        if (!this.checkPermissions('moderate')) return;
+async removeUserFromTeam(userId, teamId) {
+    try {
+        console.log(`🔄 Removing user ${userId} from team ${teamId}`);
         
-        try {
-            await this.app.firebase.update(this.app.firebase.ref(this.app.firebase.database, `users/${userId}`), {
-                isBanned: false,
-                banReason: null,
-                bannedAt: null,
-                bannedBy: null
-            });
+        // Получаем информацию о команде
+        const teamSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`)
+        );
+        
+        if (!teamSnapshot.exists()) {
+            console.log('❌ Team not found');
+            return;
+        }
+        
+        const team = teamSnapshot.val();
+        
+        // Удаляем пользователя из состава команды
+        const updatedMembers = { ...team.members };
+        delete updatedMembers[userId];
+        
+        // Пересчитываем средний MMR
+        const newAverageMMR = await this.calculateTeamAverageMMR(updatedMembers);
+        
+        // Обновляем команду
+        await this.app.firebase.update(this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`), {
+            members: updatedMembers,
+            averageMMR: newAverageMMR,
+            updatedAt: Date.now()
+        });
+        
+        // Отправляем уведомление капитану
+        await this.sendTeamNotification(teamId, userId, 'banned');
+        
+        console.log(`✅ User removed from team ${teamId}`);
+        
+    } catch (error) {
+        console.error(`❌ Error removing user from team:`, error);
+    }
+}
+
+async removeUserApplications(userId) {
+    try {
+        console.log(`🔄 Removing applications for user ${userId}`);
+        
+        // Получаем все команды
+        const teamsSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, 'teams')
+        );
+        
+        if (!teamsSnapshot.exists()) return;
+        
+        const teams = teamsSnapshot.val();
+        
+        // Для каждой команды проверяем заявки
+        for (const [teamId, team] of Object.entries(teams)) {
+            const applicationsSnapshot = await this.app.firebase.get(
+                this.app.firebase.ref(this.app.firebase.database, `teamApplications/${teamId}`)
+            );
             
-            alert('✅ Пользователь разбанен');
-            this.loadUsersList();
-            this.loadBannedUsers();
-        } catch (error) {
-            console.error('❌ Error unbanning user:', error);
-            alert('❌ Ошибка разбана пользователя');
+            if (applicationsSnapshot.exists()) {
+                const applications = applicationsSnapshot.val();
+                let hasChanges = false;
+                
+                // Удаляем заявки забаненного пользователя
+                for (const [appId, application] of Object.entries(applications)) {
+                    if (application.userId === userId && !application.responded) {
+                        await this.app.firebase.remove(
+                            this.app.firebase.ref(this.app.firebase.database, `teamApplications/${teamId}/${appId}`)
+                        );
+                        hasChanges = true;
+                    }
+                }
+                
+                if (hasChanges) {
+                    console.log(`✅ Removed applications from team ${teamId}`);
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error removing user applications:', error);
+    }
+}
+
+async sendBanNotification(userId, reason) {
+    try {
+        const notificationId = `system_ban_${Date.now()}`;
+        const notificationData = {
+            type: 'system_ban',
+            message: `Вы были забанены. Причина: ${reason}. Вы удалены из всех команд и лидербордов.`,
+            timestamp: Date.now(),
+            read: false,
+            from: 'Система модерации'
+        };
+        
+        await this.app.firebase.set(
+            this.app.firebase.ref(this.app.firebase.database, `notifications/${userId}/${notificationId}`),
+            notificationData
+        );
+        
+        console.log(`✅ Ban notification sent to user ${userId}`);
+        
+    } catch (error) {
+        console.error('❌ Error sending ban notification:', error);
+    }
+}
+
+async sendTeamNotification(teamId, bannedUserId, action) {
+    try {
+        const teamSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`)
+        );
+        
+        if (!teamSnapshot.exists()) return;
+        
+        const team = teamSnapshot.val();
+        const bannedUserSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `users/${bannedUserId}`)
+        );
+        
+        if (!bannedUserSnapshot.exists()) return;
+        
+        const bannedUser = bannedUserSnapshot.val();
+        
+        const notificationId = `team_ban_${Date.now()}`;
+        const notificationData = {
+            type: 'team_member_banned',
+            message: `Игрок ${bannedUser.nickname || bannedUser.username} был забанен и автоматически удален из вашей команды.`,
+            timestamp: Date.now(),
+            read: false,
+            from: 'Система модерации'
+        };
+        
+        // Отправляем уведомление капитану
+        await this.app.firebase.set(
+            this.app.firebase.ref(this.app.firebase.database, `notifications/${team.captain}/${notificationId}`),
+            notificationData
+        );
+        
+    } catch (error) {
+        console.error('❌ Error sending team notification:', error);
+    }
+}
+
+// Вспомогательный метод для расчета MMR (если его нет в admin-panel.js)
+async calculateTeamAverageMMR(members) {
+    let totalMMR = 0;
+    let memberCount = 0;
+    
+    for (const [memberId, memberData] of Object.entries(members)) {
+        if (memberData.mmr) {
+            totalMMR += parseInt(memberData.mmr);
+            memberCount++;
         }
     }
+    
+    return memberCount > 0 ? Math.round(totalMMR / memberCount) : 0;
+}
+
+async unbanUser(userId) {
+    if (!this.checkPermissions('moderate')) return;
+    
+    try {
+        // Получаем данные пользователя перед разбаном
+        const userSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `users/${userId}`)
+        );
+        
+        if (!userSnapshot.exists()) {
+            alert('❌ Пользователь не найден');
+            return;
+        }
+        
+        const user = userSnapshot.val();
+        
+        // Восстанавливаем пользователя
+        await this.app.firebase.update(this.app.firebase.ref(this.app.firebase.database, `users/${userId}`), {
+            isBanned: false,
+            banReason: null,
+            bannedAt: null,
+            bannedBy: null,
+            // Восстанавливаем MMR и позицию если были сохранены
+            mmr: user.originalMMR || user.mmr || 0,
+            position: user.originalPosition || user.position || '',
+            // Очищаем временные поля
+            originalMMR: null,
+            originalPosition: null,
+            bannedFromTeam: null
+        });
+        
+        // Отправляем уведомление о разбане
+        await this.sendUnbanNotification(userId);
+        
+        alert('✅ Пользователь разбанен! MMR и позиция восстановлены.');
+        this.loadUsersList();
+        this.loadBannedUsers();
+        
+    } catch (error) {
+        console.error('❌ Error unbanning user:', error);
+        alert('❌ Ошибка разбана пользователя');
+    }
+}
+
+async sendUnbanNotification(userId) {
+    try {
+        const notificationId = `system_unban_${Date.now()}`;
+        const notificationData = {
+            type: 'system_unban',
+            message: 'Вы были разбанены. Ваш MMR и позиция восстановлены. Можете снова участвовать в рейтингах и командах.',
+            timestamp: Date.now(),
+            read: false,
+            from: 'Система модерации'
+        };
+        
+        await this.app.firebase.set(
+            this.app.firebase.ref(this.app.firebase.database, `notifications/${userId}/${notificationId}`),
+            notificationData
+        );
+        
+    } catch (error) {
+        console.error('❌ Error sending unban notification:', error);
+    }
+}
 
     async deleteUser(userId) {
         if (!this.checkPermissions('delete_users')) return;

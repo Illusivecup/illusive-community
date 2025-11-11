@@ -629,31 +629,23 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
-    <!-- Админка -->
-    <script src="admin-config.js"></script>
-    <script src="admin-panel.js"></script>
-   
-    <!-- Firebase Initialization -->
-    <script src="firebase-init.js"></script>
+<!-- Основные скрипты -->
+<script src="admin-panel.js"></script>
+<script src="firebase-init.js"></script>
+<script src="script.js"></script>
+<script src="matchmaking.js"></script>
 
-    <!-- Основной скрипт приложения -->
-    <script src="script.js"></script>
-    
-    <!-- Система матчапов -->
-    <script src="matchmaking.js"></script>
-
-    <!-- Локальный админ конфиг только для разработки -->
-    <script>
-// Загружаем админ конфиг только при локальной разработке
+<!-- Загрузка админ конфига только для локальной разработки -->
+<script>
+// Загружаем админ конфиг только для локальной разработки
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     const script = document.createElement('script');
     script.src = 'admin-config.js';
     script.onload = () => console.log('✅ Local admin config loaded');
     script.onerror = () => console.warn('⚠️ Local admin config not found');
     document.head.appendChild(script);
-} else {
-    console.log('🌐 Production mode - using built-in admin config');
 }
+// НЕ добавляем else с fallback - пусть админ-панель сама обработает отсутствие конфига
 </script>
 
 </body>

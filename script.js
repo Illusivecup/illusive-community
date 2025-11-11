@@ -1501,14 +1501,14 @@ async loadLeaderboards() {
         const users = snapshot.val();
         const filterPosition = document.getElementById('leaderboardFilter').value;
         
-        // Фильтруем и сортируем пользователей
-        let players = Object.entries(users)
-            .map(([userId, user]) => ({
-                id: userId,
-                ...user,
-                mmr: user.mmr || 0
-            }))
-            .filter(user => user.mmr > 0); // Показываем только тех, у кого указан MMR
+// В методе loadLeaderboards() после получения пользователей:
+let players = Object.entries(users)
+    .map(([userId, user]) => ({
+        id: userId,
+        ...user,
+        mmr: user.mmr || 0
+    }))
+    .filter(user => user.mmr > 0 && !user.isBanned); // ← добавить проверку на бан
         
         // Применяем фильтр по позиции
         if (filterPosition !== 'all') {
@@ -1559,16 +1559,17 @@ async renderLeaderboardsList(players) {
         // Получаем информацию о команде игрока
         let teamInfo = 'Нет команды';
         let teamRole = '';
+        let teamId = null;
         
         if (player.teamId) {
             try {
-                // Используем this.firebase вместо window.firebase
                 const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${player.teamId}`));
                 if (teamSnapshot.exists()) {
                     const team = teamSnapshot.val();
                     const memberData = team.members[player.id];
                     teamInfo = team.name;
                     teamRole = memberData ? this.getPositionName(memberData.position) : '';
+                    teamId = player.teamId;
                 }
             } catch (error) {
                 console.error(`❌ Ошибка загрузки информации о команде для игрока ${player.id}:`, error);
@@ -1598,7 +1599,10 @@ async renderLeaderboardsList(players) {
                         </div>
                         <div class="leaderboard-details">
                             <span class="leaderboard-position">${this.getPositionName(player.position)}</span>
-                            <span class="leaderboard-team">${teamInfo}${teamRole ? ` (${teamRole})` : ''}</span>
+                            ${teamId ? 
+                                `<span class="leaderboard-team clickable-team" onclick="app.showTeamCardModal('${teamId}')">${teamInfo}${teamRole ? ` (${teamRole})` : ''}</span>` :
+                                `<span class="leaderboard-team">${teamInfo}</span>`
+                            }
                             ${player.telegram ? 
                                 `<a href="https://t.me/${player.telegram.replace('@', '')}" class="leaderboard-telegram" target="_blank">${player.telegram}</a>` : 
                                 ''
@@ -1613,7 +1617,6 @@ async renderLeaderboardsList(players) {
     
     leaderboardsList.innerHTML = leaderboardsHTML;
 }
-
 async checkAndHideAdminButton() {
     const adminBtn = document.getElementById('adminBtn');
     if (!adminBtn) return;
@@ -1725,6 +1728,166 @@ async viewUserProfile(userId) {
     } catch (error) {
         console.error('❌ Ошибка загрузки профиля пользователя:', error);
         alert('❌ Ошибка загрузки профиля');
+    }
+}
+
+async showTeamCardModal(teamId) {
+    try {
+        console.log('🔄 Loading team card for:', teamId);
+        
+        const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${teamId}`));
+        if (!teamSnapshot.exists()) {
+            alert('❌ Команда не найдена');
+            return;
+        }
+        
+        const team = teamSnapshot.val();
+        this.renderTeamCardModal(teamId, team);
+        
+    } catch (error) {
+        console.error('❌ Error loading team card:', error);
+        alert('❌ Ошибка загрузки информации о команде');
+    }
+}
+
+renderTeamCardModal(teamId, team) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content team-card-modal">
+            <div class="modal-header">
+                <h2>🏆 Карточка команды</h2>
+                <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+            </div>
+            <div class="modal-body team-card-modal-body">
+                ${this.createTeamVisitingCardHTML(teamId, team)}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+createTeamVisitingCardHTML(teamId, team) {
+    const members = team.members || {};
+    const memberCount = Object.keys(members).length;
+    const isFullTeam = memberCount >= 5;
+    
+    // Получаем информацию о капитане
+    let captainName = 'Неизвестно';
+    if (members[team.captain]) {
+        captainName = members[team.captain].nickname || 'Неизвестно';
+    }
+    
+    // Создаем HTML для состава команды
+    let playersHTML = '';
+    Object.entries(members).forEach(([memberId, memberData]) => {
+        const isCaptain = memberId === team.captain;
+        const positionName = this.getPositionName(memberData.position);
+        
+        playersHTML += `
+            <div class="player-card-bublas">
+                <div class="player-role-bublas">
+                    ${isCaptain ? '👑 ' : ''}${positionName}
+                    ${isCaptain ? '<span style="color: var(--accent-gold); font-size: 0.8em;">(Капитан)</span>' : ''}
+                </div>
+                <div class="player-name-bublas" onclick="app.viewUserProfile('${memberId}')">
+                    ${memberData.nickname}
+                </div>
+                <div style="margin-top: 8px; color: var(--text-secondary); font-size: 0.9em;">
+                    MMR: ${memberData.mmr || '0'}
+                </div>
+            </div>
+        `;
+    });
+    
+    return `
+        <div class="team-visiting-card">
+            <div class="card-header">
+                <div class="header-highlight"></div>
+                <h2 class="team-name-bublas">${team.name}</h2>
+                <p class="team-subtitle">${team.slogan || 'Без слогана'}</p>
+            </div>
+            
+            <div class="team-card-content">
+                <div class="players-section-bublas">
+                    <h3 class="section-title-bublas">Состав команды</h3>
+                    <div class="player-grid-bublas">
+                        ${playersHTML}
+                    </div>
+                </div>
+                
+                <div class="stats-section-bublas">
+                    <div class="mmr-display-bublas">
+                        <div class="mmr-label-bublas">Средний MMR команды</div>
+                        <div class="mmr-value-bublas">${team.averageMMR || 0}</div>
+                    </div>
+                    
+                    <div class="tournament-section-bublas">
+                        <div class="tournament-text-bublas">Участие в турнирах</div>
+                        <div class="tournament-badge-bublas">
+                            ${team.tournamentStatus === 'participating' ? '✅ Участвует' : '❌ Не участвует'}
+                        </div>
+                    </div>
+                    
+                    <div class="team-info-bublas">
+                        <div class="info-item">
+                            <strong>Статус состава:</strong>
+                            <span class="team-status ${isFullTeam ? 'status-full' : 'status-open'}">
+                                ${isFullTeam ? '✅ Полный состав' : '🟢 Ищут игроков'}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Участников:</strong> ${memberCount}/5
+                        </div>
+                        <div class="info-item">
+                            <strong>ID команды:</strong> ${teamId}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="team-footer-bublas">
+                <div>Капитан команды: <span class="clickable-nickname" onclick="app.viewUserProfile('${team.captain}')">${captainName}</span></div>
+                <div>Дата создания: ${new Date(team.createdAt).toLocaleDateString('ru-RU')}</div>
+                
+                ${this.userProfile && this.userProfile.teamId !== teamId ? `
+                    <div class="team-actions" style="margin-top: 15px;">
+                        <button class="add-btn" onclick="app.applyToTeamFromCard('${teamId}')" 
+                                ${isFullTeam ? 'disabled style="background: var(--text-secondary);"' : ''}>
+                            📨 Подать заявку
+                        </button>
+                    </div>
+                ` : ''}
+                
+                ${this.userProfile && this.userProfile.teamId === teamId ? `
+                    <div class="team-actions" style="margin-top: 15px;">
+                        <span class="add-btn" style="background: var(--accent-success);">✅ Ваша команда</span>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+async applyToTeamFromCard(teamId) {
+    if (!this.currentUser) {
+        alert('❌ Для подачи заявки необходимо авторизоваться');
+        return;
+    }
+    
+    if (this.userProfile.teamId) {
+        alert('❌ Вы уже состоите в команде');
+        return;
+    }
+    
+    // Используем существующий метод подачи заявки
+    await this.applyToTeam(teamId);
+    
+    // Закрываем модальное окно после подачи заявки
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
     }
 }
 
@@ -2783,3 +2946,6 @@ document.addEventListener('DOMContentLoaded', async function() {  // ДОБАВ�
         }
     }, 100);
 });
+
+window.showTeamCardModal = (teamId) => app.showTeamCardModal(teamId);
+window.applyToTeamFromCard = (teamId) => app.applyToTeamFromCard(teamId);

@@ -2300,3 +2300,395 @@ body {
         flex-direction: column;
     }
 }
+
+/* Стили для кликабельных команд в лидерборде */
+.clickable-team {
+    color: var(--accent-primary);
+    cursor: pointer;
+    text-decoration: underline;
+    transition: all var(--transition-normal);
+}
+
+.clickable-team:hover {
+    color: var(--accent-secondary);
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+/* Дополнительные стили для карточки команды в модальном окне */
+.team-info-bublas {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-medium);
+    padding: 15px;
+    border: 1px solid var(--border-light);
+    margin-top: 15px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.team-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.team-status {
+    padding: 4px 8px;
+    border-radius: var(--radius-small);
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.status-open {
+    background: rgba(76, 175, 80, 0.2);
+    color: var(--accent-success);
+    border: 1px solid var(--accent-success);
+}
+
+.status-full {
+    background: rgba(244, 67, 54, 0.2);
+    color: var(--accent-danger);
+    border: 1px solid var(--accent-danger);
+}
+
+/* Адаптивность для модального окна команды */
+@media (max-width: 768px) {
+    .modal-content[style*="max-width: 800px"] {
+        margin: 10px;
+        width: calc(100% - 20px);
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .team-card-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .player-grid-bublas {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* Стили для большого модального окна команды */
+.team-card-modal {
+    max-width: 95vw !important;
+    max-height: 95vh !important;
+    width: 1200px !important;
+    margin: 20px auto;
+}
+
+.team-card-modal-body {
+    padding: 0;
+    max-height: calc(95vh - 80px);
+    overflow-y: auto;
+}
+
+/* Адаптивная карточка команды в модальном окне */
+.team-visiting-card {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-large);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+    margin: 0;
+    transition: all var(--transition-normal);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-medium);
+}
+
+.team-visiting-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-medium);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.card-header {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(33, 150, 243, 0.2));
+    padding: 40px 30px;
+    position: relative;
+    overflow: hidden;
+}
+
+.team-name-bublas {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.8rem, 4vw, 3em);
+    font-weight: 900;
+    background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary), #CDDC39);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 1;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    text-align: center;
+}
+
+.team-subtitle {
+    color: var(--text-secondary);
+    font-size: 1.4em;
+    font-style: italic;
+    position: relative;
+    z-index: 1;
+    font-weight: 500;
+    text-align: center;
+}
+
+.team-card-content {
+    padding: 30px;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 30px;
+    min-height: 400px;
+}
+
+.players-section-bublas {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-medium);
+    padding: 25px;
+    border: 1px solid var(--border-light);
+}
+
+.section-title-bublas {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 1.6em;
+    font-weight: 700;
+    color: var(--accent-primary);
+    margin-bottom: 20px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.player-grid-bublas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.player-grid-bublas::-webkit-scrollbar {
+    width: 6px;
+}
+
+.player-grid-bublas::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.player-grid-bublas::-webkit-scrollbar-thumb {
+    background: var(--accent-primary);
+    border-radius: 3px;
+}
+
+.stats-section-bublas {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.mmr-display-bublas {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(139, 195, 74, 0.15));
+    border-radius: var(--radius-medium);
+    padding: 25px;
+    text-align: center;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    flex: 1;
+}
+
+.mmr-label-bublas {
+    font-size: 1.2em;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.mmr-value-bublas {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3em;
+    font-weight: 900;
+    color: var(--accent-primary);
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.tournament-section-bublas {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border-light);
+    flex: 1;
+}
+
+.tournament-text-bublas {
+    font-size: 1.1em;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.tournament-badge-bublas {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4em;
+    font-weight: 900;
+    color: #FFD700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.team-info-bublas {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-medium);
+    padding: 20px;
+    border: 1px solid var(--border-light);
+    flex: 1;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 1em;
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.team-footer-bublas {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 25px 30px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 1.1em;
+    border-top: 1px solid var(--border-light);
+    font-weight: 500;
+}
+
+.team-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 1200px) {
+    .team-card-modal {
+        width: 95vw !important;
+        margin: 10px auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .team-card-modal {
+        max-width: 98vw !important;
+        max-height: 98vh !important;
+        margin: 5px auto;
+    }
+    
+    .team-card-modal-body {
+        max-height: calc(98vh - 70px);
+        padding: 0;
+    }
+    
+    .team-card-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 20px;
+    }
+    
+    .card-header {
+        padding: 30px 20px;
+    }
+    
+    .team-name-bublas {
+        font-size: 1.8em;
+    }
+    
+    .team-subtitle {
+        font-size: 1.2em;
+    }
+    
+    .players-section-bublas {
+        padding: 20px;
+    }
+    
+    .player-grid-bublas {
+        grid-template-columns: 1fr;
+        max-height: 250px;
+    }
+    
+    .mmr-display-bublas,
+    .tournament-section-bublas,
+    .team-info-bublas {
+        padding: 20px;
+    }
+    
+    .mmr-value-bublas {
+        font-size: 2.5em;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .team-footer-bublas {
+        padding: 20px;
+        font-size: 1em;
+    }
+}
+
+@media (max-width: 480px) {
+    .team-card-content {
+        padding: 15px;
+    }
+    
+    .card-header {
+        padding: 25px 15px;
+    }
+    
+    .team-name-bublas {
+        font-size: 1.5em;
+    }
+    
+    .players-section-bublas {
+        padding: 15px;
+    }
+    
+    .mmr-display-bublas,
+    .tournament-section-bublas,
+    .team-info-bublas {
+        padding: 15px;
+    }
+    
+    .mmr-value-bublas {
+        font-size: 2em;
+    }
+    
+    .section-title-bublas {
+        font-size: 1.3em;
+    }
+}
