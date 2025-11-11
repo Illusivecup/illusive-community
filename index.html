@@ -340,6 +340,45 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Leaderboards -->
+                <div id="leaderboardsContent" class="content-section hidden">
+                  <div class="section-header">
+                     <h2>🏅 Leaderboards</h2>
+                     <p>Рейтинг игроков по MMR</p>
+    </div>
+    <div class="leaderboards-container">
+        <div class="leaderboards-filters">
+            <div class="form-group">
+                <label for="leaderboardFilter">Фильтр по позиции:</label>
+                <select id="leaderboardFilter" class="form-input">
+                    <option value="all">Все позиции</option>
+                    <option value="carry">Керри</option>
+                    <option value="mid">Мидер</option>
+                    <option value="offlane">Оффлейнер</option>
+                    <option value="support4">Саппорт 4</option>
+                    <option value="support5">Саппорт 5</option>
+                </select>
+            </div>
+            <button id="refreshLeaderboardBtn" class="add-btn">🔄 Обновить</button>
+        </div>
+        
+        <div class="leaderboards-stats">
+            <div class="stat-item">
+                <span class="stat-label">Всего игроков:</span>
+                <span class="stat-value" id="totalPlayers">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Средний MMR:</span>
+                <span class="stat-value" id="averageMMR">0</span>
+            </div>
+        </div>
+        
+        <div id="leaderboardsList" class="leaderboards-list">
+            <!-- Список лидерборда будет здесь -->
+        </div>
+    </div>
+                </div>
             </div>
         </main>
     </div>

@@ -1,25 +1,26 @@
 // === Illusive Community App ===
 class IllusiveApp {
-    constructor() {
-        this.currentUser = null;
-        this.userProfile = null;
-        this.isInitialized = false;
-        
-        // Инициализируем Firebase методы
-        this.initializeFirebaseMethods();
-        
-        // Привязываем контекст для всех методов
-        this.init = this.init.bind(this);
-        this.setupEventListeners = this.setupEventListeners.bind(this);
-        this.setupAuthStateListener = this.setupAuthStateListener.bind(this);
-        this.showSection = this.showSection.bind(this);
-        this.hideAllSections = this.hideAllSections.bind(this);
-        this.loginUser = this.loginUser.bind(this);
-        this.registerUser = this.registerUser.bind(this);
-        this.logoutUser = this.logoutUser.bind(this);
-        this.saveProfile = this.saveProfile.bind(this);
-        this.uploadAvatar = this.uploadAvatar.bind(this);
-    }
+constructor() {
+    this.currentUser = null;
+    this.userProfile = null;
+    this.isInitialized = false;
+    
+    // Инициализируем Firebase методы
+    this.initializeFirebaseMethods();
+    
+    // Привязываем контекст для всех методов
+    this.init = this.init.bind(this);
+    this.setupEventListeners = this.setupEventListeners.bind(this);
+    this.setupAuthStateListener = this.setupAuthStateListener.bind(this);
+    this.showSection = this.showSection.bind(this);
+    this.hideAllSections = this.hideAllSections.bind(this);
+    this.loginUser = this.loginUser.bind(this);
+    this.registerUser = this.registerUser.bind(this);
+    this.logoutUser = this.logoutUser.bind(this);
+    this.saveProfile = this.saveProfile.bind(this);
+    this.uploadAvatar = this.uploadAvatar.bind(this);
+    this.loadLeaderboards = this.loadLeaderboards.bind(this);
+}
 
 initializeFirebaseMethods() {
     // Проверяем, что Firebase загружен и инициализирован
@@ -122,39 +123,43 @@ async waitForFirebase() {
         }
     }
 
-    showSection(sectionName) {
-        console.log(`🔄 Переход в раздел: ${sectionName}`);
+showSection(sectionName) {
+    console.log(`🔄 Переход в раздел: ${sectionName}`);
+    
+    // Проверяем авторизацию для защищенных разделов
+    const protectedSections = ['friends', 'teams', 'team', 'notification'];
+    if (protectedSections.includes(sectionName) && !this.currentUser) {
+        alert('❌ Для доступа к этому разделу необходимо авторизоваться');
+        this.showSection('profile');
+        return;
+    }
+    
+    this.hideAllSections();
+    const targetSection = document.getElementById(`${sectionName}Content`);
+    if (targetSection) {
+        targetSection.classList.remove('hidden');
         
-        // Проверяем авторизацию для защищенных разделов
-        const protectedSections = ['friends', 'teams', 'team', 'notification'];
-        if (protectedSections.includes(sectionName) && !this.currentUser) {
-            alert('❌ Для доступа к этому разделу необходимо авторизоваться');
-            this.showSection('profile');
-            return;
-        }
-        
-        this.hideAllSections();
-        const targetSection = document.getElementById(`${sectionName}Content`);
-        if (targetSection) {
-            targetSection.classList.remove('hidden');
-            
-            // Загружаем данные для конкретного раздела
-            switch(sectionName) {
-                case 'friends':
-                    this.loadFriendsList();
-                    break;
-                case 'teams':
-                    this.loadTeamsList();
-                    break;
-                case 'team':
-                    this.loadTeamInfo();
-                    break;
-                case 'notification':
-                    this.loadNotifications();
-                    break;
-            }
+        // Загружаем данные для конкретного раздела
+        switch(sectionName) {
+            case 'friends':
+                this.loadFriendsList();
+                break;
+            case 'teams':
+                this.loadTeamsList();
+                break;
+            case 'team':
+                this.loadTeamInfo();
+                break;
+            case 'notification':
+                this.loadNotifications();
+                break;
+            // 👇 ДОБАВЛЕНО: Загрузка лидерборда
+            case 'leaderboards':
+                this.loadLeaderboards();
+                break;
         }
     }
+}
 
     hideAllSections() {
         document.querySelectorAll('.content-section').forEach(section => {
@@ -1450,6 +1455,136 @@ async limitNotifications(userId) {
         console.error('❌ Ошибка ограничения уведомлений:', error);
     }
 }
+
+// === СИСТЕМА ЛИДЕРБОРДА ===
+async loadLeaderboards() {
+    try {
+        console.log('🔄 Загрузка лидерборда...');
+        
+        // Используем this.firebase вместо window.firebase
+        const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, 'users'));
+        const leaderboardsList = document.getElementById('leaderboardsList');
+        
+        if (!snapshot.exists()) {
+            leaderboardsList.innerHTML = '<div class="no-data">Нет зарегистрированных игроков</div>';
+            return;
+        }
+        
+        const users = snapshot.val();
+        const filterPosition = document.getElementById('leaderboardFilter').value;
+        
+        // Фильтруем и сортируем пользователей
+        let players = Object.entries(users)
+            .map(([userId, user]) => ({
+                id: userId,
+                ...user,
+                mmr: user.mmr || 0
+            }))
+            .filter(user => user.mmr > 0); // Показываем только тех, у кого указан MMR
+        
+        // Применяем фильтр по позиции
+        if (filterPosition !== 'all') {
+            players = players.filter(user => user.position === filterPosition);
+        }
+        
+        // Сортируем по MMR (по убыванию)
+        players.sort((a, b) => b.mmr - a.mmr);
+        
+        this.updateLeaderboardsStats(players);
+        await this.renderLeaderboardsList(players);
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки лидерборда:', error);
+        const leaderboardsList = document.getElementById('leaderboardsList');
+        leaderboardsList.innerHTML = '<div class="no-data">Ошибка загрузки лидерборда</div>';
+    }
+}
+
+updateLeaderboardsStats(players) {
+    const totalPlayers = players.length;
+    const averageMMR = totalPlayers > 0 
+        ? Math.round(players.reduce((sum, player) => sum + player.mmr, 0) / totalPlayers)
+        : 0;
+    
+    document.getElementById('totalPlayers').textContent = totalPlayers;
+    document.getElementById('averageMMR').textContent = averageMMR;
+}
+
+async renderLeaderboardsList(players) {
+    const leaderboardsList = document.getElementById('leaderboardsList');
+    
+    if (players.length === 0) {
+        const filterPosition = document.getElementById('leaderboardFilter').value;
+        const message = filterPosition === 'all' 
+            ? 'Нет игроков с указанным MMR'
+            : `Нет игроков с позицией "${this.getPositionName(filterPosition)}"`;
+        leaderboardsList.innerHTML = `<div class="no-data">${message}</div>`;
+        return;
+    }
+    
+    let leaderboardsHTML = '';
+    
+    for (let i = 0; i < players.length; i++) {
+        const player = players[i];
+        const rank = i + 1;
+        
+        // Получаем информацию о команде игрока
+        let teamInfo = 'Нет команды';
+        let teamRole = '';
+        
+        if (player.teamId) {
+            try {
+                // Используем this.firebase вместо window.firebase
+                const teamSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${player.teamId}`));
+                if (teamSnapshot.exists()) {
+                    const team = teamSnapshot.val();
+                    const memberData = team.members[player.id];
+                    teamInfo = team.name;
+                    teamRole = memberData ? this.getPositionName(memberData.position) : '';
+                }
+            } catch (error) {
+                console.error(`❌ Ошибка загрузки информации о команде для игрока ${player.id}:`, error);
+            }
+        }
+        
+        // Определяем класс для ранга
+        let rankClass = 'rank-other';
+        if (rank === 1) rankClass = 'rank-1';
+        else if (rank === 2) rankClass = 'rank-2';
+        else if (rank === 3) rankClass = 'rank-3';
+        else if (rank <= 10) rankClass = 'rank-4-10';
+        
+        leaderboardsHTML += `
+            <div class="leaderboard-item ${rankClass}">
+                <div class="leaderboard-rank">${rank}</div>
+                <div class="leaderboard-player">
+                    <div class="leaderboard-avatar">
+                        ${player.avatarUrl ? 
+                            `<img src="${player.avatarUrl}" alt="Аватар" onerror="this.style.display='none'; this.parentElement.innerHTML='👤';">` : 
+                            '👤'
+                        }
+                    </div>
+                    <div class="leaderboard-info">
+                        <div class="leaderboard-nickname" onclick="app.viewUserProfile('${player.id}')">
+                            ${player.nickname || player.username}
+                        </div>
+                        <div class="leaderboard-details">
+                            <span class="leaderboard-position">${this.getPositionName(player.position)}</span>
+                            <span class="leaderboard-team">${teamInfo}${teamRole ? ` (${teamRole})` : ''}</span>
+                            ${player.telegram ? 
+                                `<a href="https://t.me/${player.telegram.replace('@', '')}" class="leaderboard-telegram" target="_blank">${player.telegram}</a>` : 
+                                ''
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="leaderboard-mmr">${player.mmr}</div>
+            </div>
+        `;
+    }
+    
+    leaderboardsList.innerHTML = leaderboardsHTML;
+}
     // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
     getPositionName(position) {
         const positions = {
@@ -1643,141 +1778,154 @@ async viewUserProfile(userId) {
     }
 
     // === ОБРАБОТЧИКИ СОБЫТИЙ ===
-    setupEventListeners() {
-        console.log('🔧 Настройка обработчиков событий...');
-        
-        // Навигация
-        const profileBtn = document.getElementById('profileBtn');
-        if (profileBtn) profileBtn.addEventListener('click', () => this.showSection('profile'));
-        
-        const friendsBtn = document.getElementById('friendsBtn');
-        if (friendsBtn) friendsBtn.addEventListener('click', () => this.showSection('friends'));
-        
-        const teamsListBtn = document.getElementById('teamsListBtn');
-        if (teamsListBtn) teamsListBtn.addEventListener('click', () => this.showSection('teams'));
-        
-        const teamBtn = document.getElementById('teamBtn');
-        if (teamBtn) teamBtn.addEventListener('click', () => this.showSection('team'));
-        
-        const notificationBtn = document.getElementById('notificationBtn');
-        if (notificationBtn) {
-            notificationBtn.addEventListener('click', () => {
-                this.showSection('notification');
-                this.loadNotifications();
-            });
-        }
-        
-        // Новые кнопки
-        const matchesBtn = document.getElementById('matchesBtn');
-        if (matchesBtn) {
-            matchesBtn.addEventListener('click', () => {
-                alert('🎮 Функционал "Матчапы" в разработке');
-            });
-        }
-        
-        const newsBtn = document.getElementById('newsBtn');
-        if (newsBtn) {
-            newsBtn.addEventListener('click', () => {
-                alert('📰 Функционал "Новости" в разработке');
-            });
-        }
-        
-        const leaderboardsBtn = document.getElementById('leaderboardsBtn');
-        if (leaderboardsBtn) {
-            leaderboardsBtn.addEventListener('click', () => {
-                alert('🏅 Функционал "Leaderboards" в разработке');
-            });
-        }
-        
-        // Авторизация
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('loginUsername').value;
-            const password = document.getElementById('loginPassword').value;
-            this.loginUser(email, password);
+setupEventListeners() {
+    console.log('🔧 Настройка обработчиков событий...');
+    
+    // Навигация
+    const profileBtn = document.getElementById('profileBtn');
+    if (profileBtn) profileBtn.addEventListener('click', () => this.showSection('profile'));
+    
+    const friendsBtn = document.getElementById('friendsBtn');
+    if (friendsBtn) friendsBtn.addEventListener('click', () => this.showSection('friends'));
+    
+    const teamsListBtn = document.getElementById('teamsListBtn');
+    if (teamsListBtn) teamsListBtn.addEventListener('click', () => this.showSection('teams'));
+    
+    const teamBtn = document.getElementById('teamBtn');
+    if (teamBtn) teamBtn.addEventListener('click', () => this.showSection('team'));
+    
+    const notificationBtn = document.getElementById('notificationBtn');
+    if (notificationBtn) {
+        notificationBtn.addEventListener('click', () => {
+            this.showSection('notification');
+            this.loadNotifications();
         });
-
-        document.getElementById('registerForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('registerUsername').value;
-            const password = document.getElementById('registerPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const nickname = document.getElementById('registerNickname').value;
-            const telegram = document.getElementById('registerTelegram').value;
-            this.registerUser(email, password, confirmPassword, nickname, telegram);
-        });
-        
-        // Табы авторизации
-        document.querySelectorAll('.auth-tab-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const tabName = this.getAttribute('data-tab');
-                
-                document.querySelectorAll('.auth-tab-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.auth-tab-pane').forEach(p => p.classList.remove('active'));
-                
-                this.classList.add('active');
-                document.getElementById(`${tabName}Tab`).classList.add('active');
-            });
-        });
-        
-        // Профиль
-        document.getElementById('saveProfileBtn').addEventListener('click', this.saveProfile);
-        document.getElementById('logoutBtn').addEventListener('click', this.logoutUser);
-        
-        // Аватарки
-        document.getElementById('changeAvatarBtn').addEventListener('click', () => {
-            document.getElementById('avatarUpload').click();
-        });
-        
-        document.getElementById('avatarUpload').addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                this.uploadAvatar(file);
-                event.target.value = '';
-            }
-        });
-        
-        // Друзья
-        document.getElementById('searchFriendBtn').addEventListener('click', () => this.searchFriends());
-        
-        // Команды
-        document.getElementById('createTeamBtn').addEventListener('click', () => this.showCreateTeamModal());
-        document.getElementById('joinTeamBtn').addEventListener('click', () => this.showJoinTeamModal());
-        
-        // Закрытие модальных окон
-        document.getElementById('closeCreateTeamModal').addEventListener('click', () => this.closeCreateTeamModal());
-        document.getElementById('cancelCreateTeamBtn').addEventListener('click', () => this.closeCreateTeamModal());
-        document.getElementById('closeJoinTeamModal').addEventListener('click', () => this.closeJoinTeamModal());
-        document.getElementById('cancelJoinTeamBtn').addEventListener('click', () => this.closeJoinTeamModal());
-        
-        // Табы уведомлений
-        document.querySelectorAll('.notification-tab-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const tabName = this.getAttribute('data-tab');
-                
-                document.querySelectorAll('.notification-tab-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.notification-tab-pane').forEach(p => p.classList.remove('active'));
-                
-                this.classList.add('active');
-                document.getElementById(tabName).classList.add('active');
-            });
-        });
-        
-        // Глобальные обработчики
-        document.addEventListener('click', (event) => {
-            if (event.target.classList.contains('modal')) {
-                this.closeAllModals();
-            }
-        });
-        
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
-                this.closeAllModals();
-            }
-        });
-        
-        console.log('✅ Обработчики событий настроены');
     }
+    
+    // Новые кнопки
+    const matchesBtn = document.getElementById('matchesBtn');
+    if (matchesBtn) {
+        matchesBtn.addEventListener('click', () => {
+            alert('🎮 Функционал "Матчапы" в разработке');
+        });
+    }
+    
+    const newsBtn = document.getElementById('newsBtn');
+    if (newsBtn) {
+        newsBtn.addEventListener('click', () => {
+            alert('📰 Функционал "Новости" в разработке');
+        });
+    }
+    
+    // 👇 ДОБАВЛЕНО: Обработчик для лидерборда
+    const leaderboardsBtn = document.getElementById('leaderboardsBtn');
+    if (leaderboardsBtn) {
+        leaderboardsBtn.addEventListener('click', () => {
+            this.showSection('leaderboards');
+            this.loadLeaderboards();
+        });
+    }
+    
+    // Авторизация
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+        this.loginUser(email, password);
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('registerUsername').value;
+        const password = document.getElementById('registerPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const nickname = document.getElementById('registerNickname').value;
+        const telegram = document.getElementById('registerTelegram').value;
+        this.registerUser(email, password, confirmPassword, nickname, telegram);
+    });
+    
+    // Табы авторизации
+    document.querySelectorAll('.auth-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            
+            document.querySelectorAll('.auth-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.auth-tab-pane').forEach(p => p.classList.remove('active'));
+            
+            this.classList.add('active');
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+        });
+    });
+    
+    // Профиль
+    document.getElementById('saveProfileBtn').addEventListener('click', this.saveProfile);
+    document.getElementById('logoutBtn').addEventListener('click', this.logoutUser);
+    
+    // Аватарки
+    document.getElementById('changeAvatarBtn').addEventListener('click', () => {
+        document.getElementById('avatarUpload').click();
+    });
+    
+    document.getElementById('avatarUpload').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            this.uploadAvatar(file);
+            event.target.value = '';
+        }
+    });
+    
+    // Друзья
+    document.getElementById('searchFriendBtn').addEventListener('click', () => this.searchFriends());
+    
+    // Команды
+    document.getElementById('createTeamBtn').addEventListener('click', () => this.showCreateTeamModal());
+    document.getElementById('joinTeamBtn').addEventListener('click', () => this.showJoinTeamModal());
+    
+    // 👇 ДОБАВЛЕНО: Обработчики для фильтров лидерборда
+    const leaderboardFilter = document.getElementById('leaderboardFilter');
+    if (leaderboardFilter) {
+        leaderboardFilter.addEventListener('change', () => this.loadLeaderboards());
+    }
+
+    const refreshLeaderboardBtn = document.getElementById('refreshLeaderboardBtn');
+    if (refreshLeaderboardBtn) {
+        refreshLeaderboardBtn.addEventListener('click', () => this.loadLeaderboards());
+    }
+    
+    // Закрытие модальных окон
+    document.getElementById('closeCreateTeamModal').addEventListener('click', () => this.closeCreateTeamModal());
+    document.getElementById('cancelCreateTeamBtn').addEventListener('click', () => this.closeCreateTeamModal());
+    document.getElementById('closeJoinTeamModal').addEventListener('click', () => this.closeJoinTeamModal());
+    document.getElementById('cancelJoinTeamBtn').addEventListener('click', () => this.closeJoinTeamModal());
+    
+    // Табы уведомлений
+    document.querySelectorAll('.notification-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            
+            document.querySelectorAll('.notification-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.notification-tab-pane').forEach(p => p.classList.remove('active'));
+            
+            this.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        });
+    });
+    
+    // Глобальные обработчики
+    document.addEventListener('click', (event) => {
+        if (event.target.classList.contains('modal')) {
+            this.closeAllModals();
+        }
+    });
+    
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            this.closeAllModals();
+        }
+    });
+    
+    console.log('✅ Обработчики событий настроены');
+}
 
     setupTeamEventListeners() {
         console.log('🔧 Настройка обработчиков событий для команд...');
@@ -2407,6 +2555,7 @@ window.removeTeamMember = (memberId) => app.removeTeamMember(memberId);
 window.transferCaptaincy = (newCaptainId) => app.transferCaptaincy(newCaptainId);
 window.updateTeamGeneralSettings = () => app.updateTeamGeneralSettings();
 window.recalculateTeamAverageMMR = () => app.recalculateTeamAverageMMR();
+window.loadLeaderboards = () => app.loadLeaderboards();
 
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', async function() {  // ДОБАВЛЕНО async
