@@ -642,5 +642,19 @@
     <!-- Система матчапов -->
     <script src="matchmaking.js"></script>
 
+    <!-- Локальный админ конфиг только для разработки -->
+    <script>
+// Загружаем админ конфиг только при локальной разработке
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const script = document.createElement('script');
+    script.src = 'admin-config.js';
+    script.onload = () => console.log('✅ Local admin config loaded');
+    script.onerror = () => console.warn('⚠️ Local admin config not found');
+    document.head.appendChild(script);
+} else {
+    console.log('🌐 Production mode - using built-in admin config');
+}
+</script>
+
 </body>
 </html>
