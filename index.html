@@ -85,6 +85,13 @@
                         Leaderboards
                     </button>
                 </div>
+
+                <div class="nav-item">
+                     <button class="nav-btn admin-btn" id="adminBtn">
+                          <span class="btn-icon">🔧</span>
+                          Админ-панель
+                        </button>
+</div>
             </div>
 
             <!-- Область контента -->
@@ -130,7 +137,10 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="registerPassword">Пароль:</label>
-                                        <input type="password" id="registerPassword" class="form-input" placeholder="Придумайте пароль" required minlength="6" autocomplete="new-password">
+                                        <input type="password" id="registerPassword" class="form-input" 
+                                        placeholder="Придумайте пароль" required minlength="6" 
+                                        autocomplete="new-password">
+
                                     </div>
                                     <div class="form-group">
                                         <label for="confirmPassword">Повторите пароль:</label>
@@ -379,6 +389,110 @@
         </div>
     </div>
                 </div>
+                <!-- В раздел контента добавить после leaderboards -->
+                <div id="matchmakingContent" class="content-section hidden">
+                  <!-- Контент будет загружаться динамически -->
+                </div>
+
+                <!-- Админ-панель -->
+                <div id="adminContent" class="content-section hidden">
+    <div class="section-header">
+        <h2>🔧 Админ-панель</h2>
+        <p>Управление системой и модерация</p>
+    </div>
+    <div class="admin-container">
+        <!-- Форма авторизации админа -->
+        <div id="adminAuth" class="admin-auth">
+            <div class="auth-card">
+                <h2 class="auth-title">Админ-авторизация</h2>
+                <form id="adminLoginForm">
+                    <div class="form-group">
+                        <label for="adminEmail">Email администратора:</label>
+                        <input type="email" id="adminEmail" class="form-input" placeholder="adminka@gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminPassword">Пароль:</label>
+                        <input type="password" id="adminPassword" class="form-input"
+                         placeholder="Введите пароль" required
+                          autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="auth-btn">🔐 Войти в админ-панель</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Основная панель админа (скрыта до авторизации) -->
+        <div id="adminPanel" class="admin-panel hidden">
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <h4>Всего пользователей</h4>
+                    <span id="totalUsers">0</span>
+                </div>
+                <div class="stat-card">
+                    <h4>Всего команд</h4>
+                    <span id="totalTeams">0</span>
+                </div>
+                <div class="stat-card">
+                    <h4>Активных уведомлений</h4>
+                    <span id="activeNotifications">0</span>
+                </div>
+            </div>
+
+            <div class="admin-tabs">
+                <button class="admin-tab-btn active" data-tab="users">👥 Пользователи</button>
+                <button class="admin-tab-btn" data-tab="teams">🏆 Команды</button>
+                <button class="admin-tab-btn" data-tab="moderation">🚫 Модерация</button>
+                <button class="admin-tab-btn" data-tab="system">⚙️ Система</button>
+            </div>
+
+            <div class="admin-tab-content">
+                <!-- Вкладка пользователей -->
+                <div id="usersTab" class="admin-tab-pane active">
+                    <div class="admin-search">
+                        <input type="text" id="userSearch" class="form-input" placeholder="Поиск пользователей...">
+                        <button class="add-btn" id="searchUsersBtn">🔍 Поиск</button>
+                    </div>
+                    <div id="usersList" class="admin-list">
+                        <div class="no-data">Загрузка пользователей...</div>
+                    </div>
+                </div>
+
+                <!-- Вкладка команд -->
+                <div id="teamsTab" class="admin-tab-pane">
+                    <div class="admin-search">
+                        <input type="text" id="teamSearch" class="form-input" placeholder="Поиск команд...">
+                        <button class="add-btn" id="searchTeamsBtn">🔍 Поиск</button>
+                    </div>
+                    <div id="teamsList" class="admin-list">
+                        <div class="no-data">Загрузка команд...</div>
+                    </div>
+                </div>
+
+                <!-- Вкладка модерации -->
+                <div id="moderationTab" class="admin-tab-pane">
+                    <div class="moderation-actions">
+                    <button class="save-btn" id="systemBroadcastBtn">📢 Системное уведомление</button>
+                    </div>
+                    <h3>Забаненные пользователи</h3>
+                    <div id="bannedUsersList" class="admin-list">
+                        <div class="no-data">Нет забаненных пользователей</div>
+                    </div>
+                </div>
+
+                <!-- Вкладка системы -->
+                <div id="systemTab" class="admin-tab-pane">
+                    <div class="system-actions">
+                       <button class="save-btn" id="promoteAdminBtn">👑 Добавить админа</button>
+                    </div>
+                    <h3>Администраторы системы</h3>
+                    <div id="adminsList" class="admin-list">
+                        <div class="no-data">Загрузка списка админов...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -515,10 +629,18 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
+    <!-- Админка -->
+    <script src="admin-config.js"></script>
+    <script src="admin-panel.js"></script>
+   
     <!-- Firebase Initialization -->
     <script src="firebase-init.js"></script>
 
     <!-- Основной скрипт приложения -->
     <script src="script.js"></script>
+    
+    <!-- Система матчапов -->
+    <script src="matchmaking.js"></script>
+
 </body>
 </html>

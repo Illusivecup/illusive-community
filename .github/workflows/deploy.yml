@@ -59,6 +59,29 @@ jobs:
           }
           EOF
 
+      - name: Create Admin Config
+        run: |
+          cat > admin-config.js << 'EOF'
+          // Auto-generated admin configuration
+          const ADMIN_CONFIG = {
+            adminEmail: "${{ secrets.ADMIN_EMAIL }}",
+            adminPassword: "${{ secrets.ADMIN_PASSWORD }}",
+            superAdmins: ["${{ secrets.ADMIN_EMAIL }}"],
+            systemSettings: {
+              notificationCleanupDays: 30,
+              maxNotificationsPerUser: 50,
+              autoBanThreshold: 3
+            },
+            defaultAdminPermissions: [
+              "moderate",
+              "edit_users", 
+              "edit_teams",
+              "view_stats",
+              "broadcast"
+            ]
+          };
+          EOF
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
         

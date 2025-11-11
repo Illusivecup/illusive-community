@@ -4,6 +4,8 @@ constructor() {
     this.currentUser = null;
     this.userProfile = null;
     this.isInitialized = false;
+    this.adminPanel = null;
+    this.matchmakingSystem = null;
     
     // Инициализируем Firebase методы
     this.initializeFirebaseMethods();
@@ -62,34 +64,36 @@ initializeFirebaseMethods() {
     console.log('✅ Firebase methods initialized');
 }
 
-    async init() {
-        if (this.isInitialized) {
-            console.log('🛑 App already initialized');
-            return;
-        }
-
-        try {
-            console.log('🚀 Инициализация Illusive Community...');
-            
-            // Проверяем загрузку Firebase
-            await this.waitForFirebase();
-            
-            this.createAnimatedBackground();
-            this.setupEventListeners();
-            this.setupNavigation();
-            this.setupAuthStateListener();
-            this.setupTeamEventListeners();
-            
-            this.updateConnectionStatus(true);
-            this.isInitialized = true;
-            
-            console.log('✅ Illusive Community успешно инициализирован');
-            
-        } catch (error) {
-            console.error('❌ Ошибка инициализации:', error);
-            this.updateConnectionStatus(false);
-        }
+async init() {
+    if (this.isInitialized) {
+        console.log('🛑 App already initialized');
+        return;
     }
+
+    try {
+        console.log('🚀 Инициализация Illusive Community...');
+        
+        // Проверяем загрузку Firebase
+        await this.waitForFirebase();
+        
+        this.createAnimatedBackground();
+        this.setupEventListeners();
+        this.setupNavigation();
+        this.setupAuthStateListener();
+        this.setupTeamEventListeners();
+        this.initAdminPanel(); // 👈 ДОБАВЬТЕ ЭТУ СТРОЧКУ
+        this.initMatchmakingSystem(); // ← эта строка должна быть
+        
+        this.updateConnectionStatus(true);
+        this.isInitialized = true;
+        
+        console.log('✅ Illusive Community успешно инициализирован');
+        
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+        this.updateConnectionStatus(false);
+    }
+}
 
 async waitForFirebase() {
     return new Promise((resolve, reject) => {
@@ -127,9 +131,16 @@ showSection(sectionName) {
     console.log(`🔄 Переход в раздел: ${sectionName}`);
     
     // Проверяем авторизацию для защищенных разделов
-    const protectedSections = ['friends', 'teams', 'team', 'notification'];
+    const protectedSections = ['friends', 'teams', 'team', 'notification', 'admin']; // 👈 ДОБАВЬТЕ 'admin'
     if (protectedSections.includes(sectionName) && !this.currentUser) {
         alert('❌ Для доступа к этому разделу необходимо авторизоваться');
+        this.showSection('profile');
+        return;
+    }
+    
+    // 👇 ДОБАВЛЯЕМ ПРОВЕРКУ ДЛЯ АДМИН-ПАНЕЛИ
+    if (sectionName === 'admin' && !this.currentUser) {
+        alert('❌ Для доступа к админ-панели необходимо авторизоваться');
         this.showSection('profile');
         return;
     }
@@ -153,9 +164,12 @@ showSection(sectionName) {
             case 'notification':
                 this.loadNotifications();
                 break;
-            // 👇 ДОБАВЛЕНО: Загрузка лидерборда
             case 'leaderboards':
                 this.loadLeaderboards();
+                break;
+            // 👇 ДОБАВЛЯЕМ ОБРАБОТКУ АДМИН-ПАНЕЛИ
+            case 'admin':
+                console.log('🔐 Admin section activated');
                 break;
         }
     }
@@ -181,10 +195,12 @@ showSection(sectionName) {
             this.loadUserProfile(user.uid)
                 .then(() => {
                     this.showAuthenticatedUI();
+                    this.checkAndHideAdminButton();
                 })
                 .catch(error => {
                     console.error('❌ Ошибка загрузки профиля:', error);
                     this.showAuthenticatedUI();
+                    this.checkAndHideAdminButton();
                 });
         } else {
             console.log('👤 Пользователь не авторизован');
@@ -412,11 +428,12 @@ async logoutUser() {
         document.getElementById('navigationGrid').classList.add('hidden');
     }
 
-    showAuthenticatedUI() {
-        this.hideAllSections();
-        document.getElementById('profileContent').classList.remove('hidden');
-        document.getElementById('navigationGrid').classList.remove('hidden');
-    }
+showAuthenticatedUI() {
+    this.hideAllSections();
+    document.getElementById('profileContent').classList.remove('hidden');
+    document.getElementById('navigationGrid').classList.remove('hidden');
+    this.checkAndHideAdminButton();
+}
 
     updateProfileUI() {
         if (!this.userProfile) return;
@@ -1104,6 +1121,17 @@ async loadNotifications() {
                 if (!notification.read) {
                     actionsHTML = `<button class="add-btn" onclick="app.markNotificationAsRead('${id}')">✓ Прочитано</button>`;
                 }
+case 'match_invite':
+    actionsHTML = `
+        <button class="save-btn" data-action="acceptMatchInvite" data-notification-id="${id}" data-match-id="${notification.matchId}">✓ Принять</button>
+        <button class="cancel-btn" data-action="rejectMatchInvite" data-notification-id="${id}" data-match-id="${notification.matchId}">✗ Отклонить</button>
+    `;
+    break;
+case 'match_confirmed':
+    if (!notification.read) {
+        actionsHTML = `<button class="add-btn" onclick="app.markNotificationAsRead('${id}')">✓ Прочитано</button>`;
+    }
+    break;
         }
         
         let messageWithLinks = notification.message;
@@ -1585,11 +1613,58 @@ async renderLeaderboardsList(players) {
     
     leaderboardsList.innerHTML = leaderboardsHTML;
 }
+
+async checkAndHideAdminButton() {
+    const adminBtn = document.getElementById('adminBtn');
+    if (!adminBtn) return;
+    
+    if (!this.currentUser) {
+        adminBtn.style.display = 'none';
+        return;
+    }
+    
+    try {
+        const isAdmin = await this.checkAdminRights();
+        adminBtn.style.display = isAdmin ? 'flex' : 'none';
+    } catch (error) {
+        console.error('❌ Error checking admin rights:', error);
+        adminBtn.style.display = 'none';
+    }
+}
+
+// Метод проверки прав администратора
+async checkAdminRights() {
+    if (!this.currentUser) return false;
+    
+    try {
+        // Проверяем email против списка админов
+        const userEmail = this.currentUser.email;
+        
+        // Проверяем локальную конфигурацию
+        if (typeof ADMIN_CONFIG !== 'undefined') {
+            if (ADMIN_CONFIG.superAdmins.includes(userEmail)) {
+                return true;
+            }
+        }
+        
+        // Проверяем базу данных Firebase
+        const adminKey = userEmail.replace(/[.#$[\]]/g, '_');
+        const snapshot = await this.firebase.get(
+            this.firebase.ref(this.firebase.database, `adminUsers/${adminKey}`)
+        );
+        
+        return snapshot.exists();
+        
+    } catch (error) {
+        console.error('❌ Error checking admin rights:', error);
+        return false;
+    }
+}
     // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
     getPositionName(position) {
         const positions = {
             'carry': 'Керри',
-            'mid': 'Мидлер',
+            'mid': 'Мидер',
             'offlane': 'Оффлейнер',
             'support4': 'Саппорт 4',
             'support5': 'Саппорт 5'
@@ -1762,6 +1837,89 @@ async viewUserProfile(userId) {
         }
     }
 
+        // 👇 ДОБАВЛЯЕМ ЗДЕСЬ НОВЫЙ МЕТОД initAdminPanel()
+initAdminPanel() {
+    try {
+        // Проверяем, что файл админ-панели загружен
+        if (typeof AdminPanel === 'undefined') {
+            console.warn('⚠️ AdminPanel not found - skipping admin initialization');
+            return;
+        }
+        
+        // Проверяем, что админ конфиг загружен
+        if (typeof ADMIN_CONFIG === 'undefined') {
+            console.warn('⚠️ ADMIN_CONFIG not found - admin panel will not work');
+            return;
+        }
+        
+        console.log('🔐 Admin config detected:', ADMIN_CONFIG.adminEmail);
+        
+        // Создаем экземпляр админ-панели
+        this.adminPanel = new AdminPanel(this);
+        
+        // Инициализируем админ-панель только после авторизации
+        this.setupAdminAuthListener();
+        
+    } catch (error) {
+        console.error('❌ Error initializing admin panel:', error);
+    }
+}
+
+initMatchmakingSystem() {
+    try {
+        if (typeof MatchmakingSystem === 'undefined') {
+            console.warn('⚠️ MatchmakingSystem not found - skipping matchmaking initialization');
+            return;
+        }
+        
+        this.matchmakingSystem = new MatchmakingSystem(this);
+        this.matchmakingSystem.init();
+        console.log('✅ Matchmaking system initialized');
+        
+    } catch (error) {
+        console.error('❌ Error initializing matchmaking system:', error);
+    }
+}
+
+setupAdminAuthListener() {
+    // Слушаем изменения авторизации
+    this.firebase.onAuthStateChanged((user) => {
+        if (user && this.adminPanel) {
+            // Переинициализируем админ-панель при смене пользователя
+            setTimeout(() => {
+                this.adminPanel.init().then(() => {
+                    console.log('✅ Admin panel reinitialized for user:', user.email);
+                }).catch(error => {
+                    console.error('❌ Admin panel reinitialization failed:', error);
+                });
+            }, 1000);
+        }
+    });
+}
+
+    // === ОБРАБОТЧИКИ СОБЫТИЙ ===
+    setupEventListeners() {
+        // ... существующий код ...
+        
+        // 👇 И ЗДЕСЬ ДОБАВЛЯЕМ ОБРАБОТЧИК ДЛЯ АДМИН-КНОПКИ
+        const adminBtn = document.getElementById('adminBtn');
+if (adminBtn) {
+    adminBtn.addEventListener('click', () => {
+        if (!this.currentUser) {
+            alert('❌ Для доступа к админ-панели необходимо авторизоваться');
+            this.showSection('auth');
+            return;
+        }
+        
+        this.showSection('admin');
+        // Сбрасываем админ-авторизацию при каждом входе
+        if (this.adminPanel) {
+            this.adminPanel.hideAdminPanel();
+        }
+    });
+}
+    }
+
     // === ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК КОМАНД ===
     switchTeamTab(tabName) {
         console.log(`🔄 Переключение на вкладку: ${tabName}`);
@@ -1801,12 +1959,62 @@ setupEventListeners() {
             this.loadNotifications();
         });
     }
+    // Делегирование событий для уведомлений матчапов
+document.addEventListener('click', (e) => {
+    const target = e.target;
+    
+    if (target.hasAttribute('data-action')) {
+        const action = target.getAttribute('data-action');
+        const notificationId = target.getAttribute('data-notification-id');
+        const matchId = target.getAttribute('data-match-id');
+        
+        if (action === 'acceptMatchInvite' && this.matchmakingSystem) {
+            this.matchmakingSystem.acceptMatchInvite(notificationId, matchId);
+        } else if (action === 'rejectMatchInvite' && this.matchmakingSystem) {
+            this.matchmakingSystem.rejectMatchInvite(notificationId, matchId);
+        }
+    }
+});
+
+const adminBtn = document.getElementById('adminBtn');
+if (adminBtn) {
+    adminBtn.addEventListener('click', async () => {
+        if (!this.currentUser) {
+            alert('❌ Для доступа к админ-панели необходимо авторизоваться');
+            this.showSection('auth');
+            return;
+        }
+        
+        // 👇 ДОБАВЬТЕ ПРОВЕРКУ ПРАВ
+        const isAdmin = await this.checkAdminRights();
+        if (!isAdmin) {
+            alert('❌ Недостаточно прав для доступа к админ-панели');
+            this.showSection('profile');
+            return;
+        }
+        
+        this.showSection('admin');
+        if (this.adminPanel) {
+            this.adminPanel.hideAdminPanel();
+        }
+    });
+}
     
     // Новые кнопки
     const matchesBtn = document.getElementById('matchesBtn');
     if (matchesBtn) {
         matchesBtn.addEventListener('click', () => {
-            alert('🎮 Функционал "Матчапы" в разработке');
+            if (!this.currentUser) {
+                alert('❌ Для доступа к матчапам необходимо авторизоваться');
+                this.showSection('auth');
+                return;
+            }
+            // Используем новую систему матчапов
+            if (this.matchmakingSystem) {
+                this.matchmakingSystem.showMatchmakingSection();
+            } else {
+                alert('❌ Система матчапов не инициализирована');
+            }
         });
     }
     
