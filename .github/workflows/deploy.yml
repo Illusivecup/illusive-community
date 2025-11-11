@@ -63,7 +63,7 @@ jobs:
         run: |
           cat > admin-config.js << 'EOF'
           // Auto-generated admin configuration
-          const ADMIN_CONFIG = {
+          window.ADMIN_CONFIG = {
             adminEmail: "${{ secrets.ADMIN_EMAIL }}",
             adminPassword: "${{ secrets.ADMIN_PASSWORD }}",
             superAdmins: ["${{ secrets.ADMIN_EMAIL }}"],

@@ -2,7 +2,7 @@
 // ШАБЛОН КОНФИГУРАЦИИ - заполните своими данными
 // Затем переименуйте файл в admin-config.js
 
-const ADMIN_CONFIG = {
+window.ADMIN_CONFIG = {
   // Email главного администратора
   adminEmail: "your-admin-email@example.com",
   
