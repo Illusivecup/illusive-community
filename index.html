@@ -493,9 +493,59 @@
         </div>
     </div>
                 </div>
-            </div>
-        </main>
+           
+           <!-- Новости -->
+<div id="newsContent" class="content-section hidden">
+    <div class="section-header">
+        <h2>📰 Новости Сообщества</h2>
+        <p>Следите за последними событиями в мире команд и игроков</p>
     </div>
+    <div class="news-container">
+        <div class="news-controls">
+            <div class="news-filters">
+                <select id="newsFilter" class="form-input">
+                    <option value="all">Все новости</option>
+                    <option value="team-change">Смена команд</option>
+                    <option value="captain-change">Смена капитанов</option>
+                    <option value="team-deleted">Удаление команд</option>
+                    <option value="player-joined">Новые участники</option>
+                    <option value="player-left">Уход из команд</option>
+                    <option value="team-created">Создание команд</option>
+                </select>
+                
+                <select id="timeFilter" class="form-input">
+                    <option value="all">За все время</option>
+                    <option value="today">Сегодня</option>
+                    <option value="week">За неделю</option>
+                    <option value="month">За месяц</option>
+                </select>
+            </div>
+            
+            <div class="news-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalNews">0</div>
+                    <div class="stat-label">Всего новостей</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="todayNews">0</div>
+                    <div class="stat-label">Сегодня</div>
+                </div>
+            </div>
+            
+            <button class="add-btn" id="refreshNews">🔄 Обновить</button>
+        </div>
+        
+        <div class="news-list" id="newsList">
+            <div class="no-data">Загрузка новостей...</div>
+        </div>
+    </div>
+</div>
+           
+            </div>
+
+        </main>
+
+
 
     <!-- Модальные окна -->
     <div id="createTeamModal" class="modal hidden">

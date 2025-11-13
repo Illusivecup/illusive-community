@@ -898,6 +898,37 @@ async applyToTeam(teamId) {
     }
 }
 
+// Временный метод для тестирования - можно удалить позже
+async testNewsCreation() {
+    if (!this.currentUser) {
+        alert('❌ Сначала авторизуйтесь');
+        return;
+    }
+    
+    try {
+        console.log('🧪 Тестирование создания новости...');
+        
+        await this.createNews('team-created', {
+            captainName: 'TestCaptain',
+            captainId: this.currentUser.uid,
+            teamName: 'TestTeam',
+            teamId: 'test_team_123',
+            message: `Тестовая новость: создана команда "TestTeam" с капитаном TestCaptain`
+        });
+        
+        console.log('✅ Тестовая новость создана');
+        alert('✅ Тестовая новость создана! Проверьте консоль и раздел новостей.');
+        
+        // Перезагружаем новости
+        this.loadNews();
+        
+    } catch (error) {
+        console.error('❌ Ошибка тестирования:', error);
+        alert('❌ Ошибка тестирования новостей');
+    }
+}
+
+
 async createTeam(teamName, slogan) {
     if (!this.currentUser) return;
     
@@ -940,6 +971,7 @@ async createTeam(teamName, slogan) {
         
         alert('✅ Команда создана! Вы - капитан команды.');
         this.closeCreateTeamModal();
+        await this.createTeamCreatedNews(teamId, this.currentUser.uid);
         
     } catch (error) {
         console.error('❌ Ошибка создания команды:', error);
@@ -1290,6 +1322,7 @@ async acceptTeamInvite(notificationId, teamId) {
         this.loadNotifications();
         
         alert('✅ Вы присоединились к команде!');
+        await this.createPlayerJoinedNews(this.currentUser.uid, teamId);
         
     } catch (error) {
         console.error('❌ Ошибка принятия приглашения:', error);
@@ -1389,6 +1422,7 @@ async acceptTeamApplication(notificationId, applicationId, teamId, userId) {
         this.loadNotifications();
         this.loadTeamInfo();
         alert('✅ Игрок принят в команду!');
+await this.createPlayerJoinedNews(userId, teamId);
         
     } catch (error) {
         console.error('❌ Ошибка принятия заявки:', error);
@@ -2100,6 +2134,7 @@ if (adminBtn) {
 
     // === ОБРАБОТЧИКИ СОБЫТИЙ ===
 setupEventListeners() {
+
     console.log('🔧 Настройка обработчиков событий...');
     
     // Навигация
@@ -2181,12 +2216,18 @@ if (adminBtn) {
         });
     }
     
-    const newsBtn = document.getElementById('newsBtn');
-    if (newsBtn) {
-        newsBtn.addEventListener('click', () => {
-            alert('📰 Функционал "Новости" в разработке');
-        });
-    }
+const newsBtn = document.getElementById('newsBtn');
+if (newsBtn) {
+    newsBtn.addEventListener('click', () => {
+        if (!this.currentUser) {
+            alert('❌ Для просмотра новостей необходимо авторизоваться');
+            this.showSection('auth');
+            return;
+        }
+        this.showSection('news');
+        this.loadNews();
+    });
+}
     
     // 👇 ДОБАВЛЕНО: Обработчик для лидерборда
     const leaderboardsBtn = document.getElementById('leaderboardsBtn');
@@ -2296,6 +2337,22 @@ if (adminBtn) {
     });
     
     console.log('✅ Обработчики событий настроены');
+
+const refreshNewsBtn = document.getElementById('refreshNews');
+if (refreshNewsBtn) {
+    refreshNewsBtn.addEventListener('click', () => this.loadNews());
+}
+
+const newsFilter = document.getElementById('newsFilter');
+if (newsFilter) {
+    newsFilter.addEventListener('change', () => this.loadNews());
+}
+
+const timeFilter = document.getElementById('timeFilter');
+if (timeFilter) {
+    timeFilter.addEventListener('change', () => this.loadNews());
+}
+
 }
 
     setupTeamEventListeners() {
@@ -2516,6 +2573,7 @@ async leaveTeam() {
         this.updateTeamUI();
         
         alert('✅ Вы покинули команду');
+        await this.createPlayerLeftNews(this.currentUser.uid, this.userProfile.teamId);
         
     } catch (error) {
         console.error('❌ Ошибка выхода из команды:', error);
@@ -2594,6 +2652,7 @@ async deleteTeam() {
         
         this.closeDeleteTeamModal();
         alert('✅ Команда удалена!');
+        await this.createTeamDeletedNews(this.userProfile.teamId, this.currentUser.uid);
         
     } catch (error) {
         console.error('❌ Ошибка удаления команды:', error);
@@ -2844,6 +2903,7 @@ async removeTeamMember(memberId) {
         alert('✅ Игрок удален из команды');
         this.loadTeamMembersForEdit();
         this.loadTeamInfo();
+        await this.createPlayerLeftNews(memberId, this.userProfile.teamId);
         
     } catch (error) {
         console.error('❌ Ошибка удаления игрока:', error);
@@ -2894,13 +2954,413 @@ async transferCaptaincy(newCaptainId) {
         alert('✅ Капитанство передано!');
         this.closeEditTeamModal();
         this.loadTeamInfo();
+        await this.createCaptainChangeNews(newCaptainId, this.userProfile.teamId);
         
     } catch (error) {
         console.error('❌ Ошибка передачи капитанства:', error);
         alert('❌ Ошибка передачи капитанства');
     }
 }
+
+// === СИСТЕМА НОВОСТЕЙ ===
+async loadNews() {
+    if (!this.currentUser) {
+        console.log('❌ loadNews: Пользователь не авторизован');
+        document.getElementById('newsList').innerHTML = '<div class="no-data">Для просмотра новостей необходимо авторизоваться</div>';
+        return;
+    }
+
+    try {
+        console.log('🔄 Загрузка новостей...');
+        
+        const newsRef = this.firebase.ref(this.firebase.database, 'news');
+        console.log('📡 Ссылка на новости:', newsRef.toString());
+        
+        const snapshot = await this.firebase.get(newsRef);
+        console.log('📊 Снапшот новостей:', snapshot.exists() ? 'существует' : 'не существует');
+        
+        const newsContainer = document.getElementById('newsList');
+        
+        if (!snapshot.exists()) {
+            console.log('📭 В базе нет новостей');
+            newsContainer.innerHTML = '<div class="no-data">📰 Новостей пока нет. События появятся здесь автоматически!</div>';
+            return;
+        }
+        
+        const newsData = snapshot.val();
+        console.log('📨 Полученные новости:', newsData);
+        
+        let allNews = Object.entries(newsData)
+            .map(([id, item]) => ({ id, ...item }))
+            .sort((a, b) => b.timestamp - a.timestamp);
+        
+        console.log('📋 Отсортированные новости:', allNews);
+        
+        // Применяем фильтры
+        allNews = this.filterNews(allNews);
+        console.log('🎯 Отфильтрованные новости:', allNews);
+        
+        this.renderNewsList(allNews);
+        this.updateNewsStats(allNews);
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки новостей:', error);
+        console.error('🔧 Детали ошибки:', error.code, error.message);
+        document.getElementById('newsList').innerHTML = '<div class="no-data">Ошибка загрузки новостей</div>';
+    }
 }
+
+    filterNews(news) {
+        const typeFilter = document.getElementById('newsFilter').value;
+        const timeFilter = document.getElementById('timeFilter').value;
+        
+        let filteredNews = news;
+
+        // Фильтр по типу
+        if (typeFilter !== 'all') {
+            filteredNews = filteredNews.filter(item => item.type === typeFilter);
+        }
+
+        // Фильтр по времени
+        if (timeFilter !== 'all') {
+            const now = Date.now();
+            const timeRanges = {
+                'today': 24 * 60 * 60 * 1000,
+                'week': 7 * 24 * 60 * 60 * 1000,
+                'month': 30 * 24 * 60 * 60 * 1000
+            };
+            
+            filteredNews = filteredNews.filter(item => 
+                now - item.timestamp < timeRanges[timeFilter]
+            );
+        }
+
+        return filteredNews;
+    }
+
+    renderNewsList(news) {
+        const newsContainer = document.getElementById('newsList');
+        
+        if (!news || news.length === 0) {
+            newsContainer.innerHTML = '<div class="no-data">📰 Новостей по выбранным фильтрам нет</div>';
+            return;
+        }
+
+        let newsHTML = '';
+        
+        news.forEach(item => {
+            const timeAgo = this.getNewsTimeAgo(item.timestamp);
+            const typeIcon = this.getNewsTypeIcon(item.type);
+            
+            newsHTML += `
+                <div class="news-item ${item.type}">
+                    <div class="news-header">
+                        <span class="news-type ${item.type}">
+                            ${typeIcon} ${this.getNewsTypeText(item.type)}
+                        </span>
+                        <span class="news-time">${timeAgo}</span>
+                    </div>
+                    <div class="news-content">
+                        ${this.formatNewsMessage(item)}
+                    </div>
+                    ${this.getNewsActions(item)}
+                </div>
+            `;
+        });
+
+        newsContainer.innerHTML = newsHTML;
+    }
+
+    getNewsTypeIcon(type) {
+        const icons = {
+            'team-change': '🔄',
+            'captain-change': '👑',
+            'team-deleted': '🗑️',
+            'player-joined': '➕',
+            'player-left': '➖',
+            'team-created': '🏆'
+        };
+        return icons[type] || '📢';
+    }
+
+    getNewsTypeText(type) {
+        const texts = {
+            'team-change': 'Смена команды',
+            'captain-change': 'Новый капитан', 
+            'team-deleted': 'Удаление команды',
+            'player-joined': 'Новый участник',
+            'player-left': 'Уход из команды',
+            'team-created': 'Создание команды'
+        };
+        return texts[type] || 'Событие';
+    }
+
+    formatNewsMessage(news) {
+        let message = news.message;
+        
+        // Делаем имена игроков кликабельными
+        if (news.playerName && news.playerId) {
+            message = message.replace(
+                news.playerName, 
+                `<span class="clickable-nickname" onclick="app.viewUserProfile('${news.playerId}')">${news.playerName}</span>`
+            );
+        }
+        
+        if (news.captainName && news.captainId) {
+            message = message.replace(
+                news.captainName, 
+                `<span class="clickable-nickname" onclick="app.viewUserProfile('${news.captainId}')">${news.captainName}</span>`
+            );
+        }
+        
+        // Делаем названия команд кликабельными
+        if (news.teamName && news.teamId) {
+            message = message.replace(
+                news.teamName, 
+                `<span class="clickable-team" onclick="app.showTeamCardModal('${news.teamId}')">${news.teamName}</span>`
+            );
+        }
+        
+        if (news.fromTeam && news.fromTeamId) {
+            message = message.replace(
+                news.fromTeam, 
+                `<span class="clickable-team" onclick="app.showTeamCardModal('${news.fromTeamId}')">${news.fromTeam}</span>`
+            );
+        }
+        
+        if (news.toTeam && news.toTeamId) {
+            message = message.replace(
+                news.toTeam, 
+                `<span class="clickable-team" onclick="app.showTeamCardModal('${news.toTeamId}')">${news.toTeam}</span>`
+            );
+        }
+
+        return message;
+    }
+
+    getNewsActions(news) {
+        let actions = '';
+        
+        if (news.playerId) {
+            actions += `<button class="news-action-btn" onclick="app.viewUserProfile('${news.playerId}')">👤 Профиль игрока</button>`;
+        }
+        
+        if (news.teamId) {
+            actions += `<button class="news-action-btn" onclick="app.showTeamCardModal('${news.teamId}')">🏆 Инфо команды</button>`;
+        }
+        
+        if (actions) {
+            return `<div class="news-actions">${actions}</div>`;
+        }
+        
+        return '';
+    }
+
+    getNewsTimeAgo(timestamp) {
+        const now = Date.now();
+        const diff = now - timestamp;
+        
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+        
+        if (minutes < 1) return 'только что';
+        if (minutes < 60) return `${minutes} мин назад`;
+        if (hours < 24) return `${hours} ч назад`;
+        if (days < 7) return `${days} дн назад`;
+        
+        return new Date(timestamp).toLocaleDateString('ru-RU');
+    }
+
+    updateNewsStats(news) {
+        const totalNews = news.length;
+        const today = new Date().setHours(0, 0, 0, 0);
+        const todayNews = news.filter(item => item.timestamp >= today).length;
+        
+        document.getElementById('totalNews').textContent = totalNews;
+        document.getElementById('todayNews').textContent = todayNews;
+    }
+
+    // === МЕТОДЫ ДЛЯ СОЗДАНИЯ НОВОСТЕЙ ===
+async createNews(type, data) {
+    if (!this.currentUser) {
+        console.log('❌ createNews: Пользователь не авторизован');
+        return;
+    }
+    
+    try {
+        console.log('🔄 Создание новости:', type);
+        console.log('📝 Данные для новости:', data);
+        
+        const newsId = `news_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newsData = {
+            type: type,
+            ...data,
+            timestamp: Date.now(),
+            createdBy: this.currentUser.uid
+        };
+        
+        console.log('📨 Полные данные новости:', newsData);
+        console.log('🔗 Путь в базе:', `news/${newsId}`);
+        
+        const newsRef = this.firebase.ref(this.firebase.database, `news/${newsId}`);
+        console.log('📡 Ссылка на запись:', newsRef.toString());
+        
+        await this.firebase.set(newsRef, newsData);
+        console.log('✅ Новость успешно создана в базе:', newsId);
+        
+        // Проверяем, что новость действительно записалась
+        const checkRef = this.firebase.ref(this.firebase.database, `news/${newsId}`);
+        const checkSnapshot = await this.firebase.get(checkRef);
+        console.log('✅ Проверка записи:', checkSnapshot.exists() ? 'НОВОСТЬ ЗАПИСАНА' : 'НОВОСТЬ НЕ ЗАПИСАНА');
+        
+    } catch (error) {
+        console.error('❌ Ошибка создания новости:', error);
+        console.error('🔧 Код ошибки:', error.code);
+        console.error('🔧 Сообщение ошибки:', error.message);
+        alert('❌ Ошибка создания новости: ' + error.message);
+    }
+}
+
+    async createTeamCreatedNews(teamId, captainId) {
+        const [captain, team] = await Promise.all([
+            this.getUserProfile(captainId),
+            this.getTeamInfo(teamId)
+        ]);
+        
+        if (captain && team) {
+            await this.createNews('team-created', {
+                captainName: captain.nickname || captain.username,
+                captainId: captainId,
+                teamName: team.name,
+                teamId: teamId,
+                message: `Создана новая команда "${team.name}" с капитаном ${captain.nickname}`
+            });
+        }
+    }
+
+    async createPlayerJoinedNews(playerId, teamId) {
+        const [player, team] = await Promise.all([
+            this.getUserProfile(playerId),
+            this.getTeamInfo(teamId)
+        ]);
+        
+        if (player && team) {
+            await this.createNews('player-joined', {
+                playerName: player.nickname || player.username,
+                playerId: playerId,
+                teamName: team.name,
+                teamId: teamId,
+                message: `Игрок ${player.nickname} присоединился к команде ${team.name}`
+            });
+        }
+    }
+
+    async createPlayerLeftNews(playerId, teamId) {
+        const [player, team] = await Promise.all([
+            this.getUserProfile(playerId),
+            this.getTeamInfo(teamId)
+        ]);
+        
+        if (player && team) {
+            await this.createNews('player-left', {
+                playerName: player.nickname || player.username,
+                playerId: playerId,
+                teamName: team.name,
+                teamId: teamId,
+                message: `Игрок ${player.nickname} покинул команду ${team.name}`
+            });
+        }
+    }
+
+    async createCaptainChangeNews(playerId, teamId) {
+        const [player, team] = await Promise.all([
+            this.getUserProfile(playerId),
+            this.getTeamInfo(teamId)
+        ]);
+        
+        if (player && team) {
+            await this.createNews('captain-change', {
+                playerName: player.nickname || player.username,
+                playerId: playerId,
+                teamName: team.name,
+                teamId: teamId,
+                message: `Игрок ${player.nickname} стал новым капитаном команды ${team.name}`
+            });
+        }
+    }
+
+    async createTeamDeletedNews(teamId, captainId) {
+        const [captain, team] = await Promise.all([
+            this.getUserProfile(captainId),
+            this.getTeamInfo(teamId)
+        ]);
+        
+        if (captain && team) {
+            await this.createNews('team-deleted', {
+                captainName: captain.nickname || captain.username,
+                captainId: captainId,
+                teamName: team.name,
+                teamId: teamId,
+                message: `Команда ${team.name} была удалена капитаном ${captain.nickname}`
+            });
+        }
+    }
+
+    // Вспомогательные методы
+    async getUserProfile(userId) {
+        try {
+            const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `users/${userId}`));
+            return snapshot.exists() ? snapshot.val() : null;
+        } catch (error) {
+            console.error('❌ Ошибка получения профиля:', error);
+            return null;
+        }
+    }
+
+    async getTeamInfo(teamId) {
+        try {
+            const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${teamId}`));
+            return snapshot.exists() ? snapshot.val() : null;
+        } catch (error) {
+            console.error('❌ Ошибка получения информации о команде:', error);
+            return null;
+        }
+    }
+
+// === ТЕСТОВЫЙ МЕТОД ДЛЯ ПРОВЕРКИ НОВОСТЕЙ ===
+    async testNewsCreation() {
+        if (!this.currentUser) {
+            alert('❌ Сначала авторизуйтесь');
+            return;
+        }
+        
+        try {
+            console.log('🧪 Тестирование создания новости...');
+            
+            // Создаем тестовую новость
+            await this.createNews('team-created', {
+                captainName: 'TestCaptain',
+                captainId: this.currentUser.uid,
+                teamName: 'TestTeam',
+                teamId: 'test_team_123',
+                message: `Тестовая новость: создана команда "TestTeam" с капитаном TestCaptain`
+            });
+            
+            console.log('✅ Тестовая новость создана');
+            alert('✅ Тестовая новость создана! Проверьте раздел новостей.');
+            
+            // Перезагружаем новости
+            this.loadNews();
+            
+        } catch (error) {
+            console.error('❌ Ошибка тестирования:', error);
+            alert('❌ Ошибка тестирования новостей: ' + error.message);
+        }
+    }
+
+}
+
 
 // Создаем и инициализируем приложение
 const app = new IllusiveApp();
@@ -2927,6 +3387,14 @@ window.transferCaptaincy = (newCaptainId) => app.transferCaptaincy(newCaptainId)
 window.updateTeamGeneralSettings = () => app.updateTeamGeneralSettings();
 window.recalculateTeamAverageMMR = () => app.recalculateTeamAverageMMR();
 window.loadLeaderboards = () => app.loadLeaderboards();
+// Глобальная функция для тестирования новостей
+window.testNews = () => {
+    if (app && app.testNewsCreation) {
+        app.testNewsCreation();
+    } else {
+        alert('❌ Приложение не инициализировано');
+    }
+};
 
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', async function() {  // ДОБАВЛЕНО async
