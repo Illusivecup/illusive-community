@@ -2739,25 +2739,44 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    max-height: 400px;
+    height: 400px; /* Фиксированная высота */
+    min-height: 300px;
+    max-height: 60vh;
     overflow-y: auto;
-    padding-right: 10px;
+    overflow-x: hidden;
+    padding: 15px;
     width: 100%;
     box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-medium);
 }
 
+/* Стили для скроллбара */
 .news-list::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 
 .news-list::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 3px;
+    border-radius: 4px;
+    margin: 5px 0;
 }
 
 .news-list::-webkit-scrollbar-thumb {
     background: var(--accent-primary);
-    border-radius: 3px;
+    border-radius: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.news-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-secondary);
+}
+
+/* Для Firefox */
+.news-list {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-primary) rgba(255, 255, 255, 0.05);
 }
 
 /* Стили для элементов новостей */
@@ -2769,6 +2788,21 @@ body {
     transition: all var(--transition-normal);
     position: relative;
     overflow: hidden;
+    flex-shrink: 0; /* Важно: не сжимается при прокрутке */
+}
+
+.news-content {
+    margin-bottom: 15px;
+    line-height: 1.6;
+    font-size: 1em;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Ограничиваем длинные тексты */
+.news-content {
+    max-height: none; /* Убираем ограничения */
+    overflow: visible;
 }
 
 .news-item:hover {
@@ -2942,3 +2976,36 @@ body {
         font-size: 0.95em;
     }
 }
+
+/* Адаптивность высоты для новостей */
+@media (max-width: 1024px) {
+    .news-list {
+        height: 350px;
+        max-height: 55vh;
+    }
+}
+
+@media (max-width: 768px) {
+    .news-list {
+        height: 300px;
+        max-height: 50vh;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .news-list {
+        height: 250px;
+        max-height: 45vh;
+        padding: 10px;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-height: 600px) {
+    .news-list {
+        height: 200px;
+        max-height: 40vh;
+    }
+}
+
