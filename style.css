@@ -3116,3 +3116,156 @@ body {
         gap: 8px;
     }
 }
+
+/* ЗАГЛУШКА */
+/* === СТИЛИ ДЛЯ ЗАГЛУШКИ МАТЧАПОВ === */
+.matchmaking-stub {
+    text-align: center;
+    padding: 40px 20px 60px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.matchmaking-stub-icon {
+    font-size: 6em;
+    margin-bottom: 30px;
+    opacity: 0.7;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.matchmaking-stub-title {
+    color: var(--accent-warning);
+    margin-bottom: 20px;
+    font-size: 2em;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.matchmaking-stub-content {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.matchmaking-stub-description {
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 40px;
+    font-size: 1.2em;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.matchmaking-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin-bottom: 50px;
+}
+
+.matchmaking-feature-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 30px 25px;
+    border-radius: var(--radius-large);
+    border: 1px solid var(--border-light);
+    transition: all var(--transition-normal);
+    backdrop-filter: blur(10px);
+}
+
+.matchmaking-feature-card:hover {
+    transform: translateY(-8px);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow-medium);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.matchmaking-feature-icon {
+    font-size: 3em;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.matchmaking-feature-title {
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 1.3em;
+    font-weight: 700;
+}
+
+.matchmaking-feature-desc {
+    color: var(--text-secondary);
+    font-size: 1em;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.matchmaking-announcement {
+    background: linear-gradient(135deg, rgba(255,152,0,0.15), rgba(255,193,7,0.15));
+    padding: 30px;
+    border-radius: var(--radius-large);
+    border: 2px solid rgba(255,152,0,0.4);
+    margin-bottom: 40px;
+    backdrop-filter: blur(10px);
+}
+
+.matchmaking-announcement p {
+    color: var(--accent-warning);
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.3em;
+    font-family: 'Exo 2', sans-serif;
+}
+
+.matchmaking-progress {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 25px;
+    border-radius: var(--radius-large);
+    border: 1px solid var(--border-light);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    border-radius: 6px;
+    transition: width 1s ease-in-out;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}

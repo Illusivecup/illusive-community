@@ -24,11 +24,134 @@ class MatchmakingSystem {
         // Обработчики будут добавлены в основном приложении
     }
 
-    showMatchmakingSection() {
-        this.app.hideAllSections();
-        document.getElementById('matchmakingContent').classList.remove('hidden');
-        this.loadMatchmakingUI();
-    }
+showMatchmakingSection() {
+    this.app.hideAllSections();
+    document.getElementById('matchmakingContent').classList.remove('hidden');
+    this.showMatchmakingStub();
+}
+
+showMatchmakingStub() {
+    const matchmakingSection = document.getElementById('matchmakingContent');
+    
+    matchmakingSection.innerHTML = `
+        <div class="section-header">
+            <h2>🎮 Система Матчапов</h2>
+            <p>Найдите достойных противников для вашей команды</p>
+        </div>
+        <div class="matchmaking-stub">
+            <div class="matchmaking-stub-icon">🚧</div>
+            <h3 class="matchmaking-stub-title">Раздел в разработке</h3>
+            
+            <div class="matchmaking-stub-content">
+                <p class="matchmaking-stub-description">
+                    Мы усердно работаем над созданием удобной системы матчапов, где вы сможете 
+                    находить подходящих противников, создавать матчи и участвовать в турнирах.
+                </p>
+                
+                <div class="matchmaking-features-grid">
+                    <div class="matchmaking-feature-card">
+                        <div class="matchmaking-feature-icon">⚔️</div>
+                        <h4 class="matchmaking-feature-title">Поиск противников</h4>
+                        <p class="matchmaking-feature-desc">
+                            Автоматический подбор команд по MMR, позициям и предпочтениям
+                        </p>
+                    </div>
+                    
+                    <div class="matchmaking-feature-card">
+                        <div class="matchmaking-feature-icon">🏆</div>
+                        <h4 class="matchmaking-feature-title">Турниры</h4>
+                        <p class="matchmaking-feature-desc">
+                            Участвуйте в регулярных турнирах и зарабатывайте рейтинг для команды
+                        </p>
+                    </div>
+                    
+                    <div class="matchmaking-feature-card">
+                        <div class="matchmaking-feature-icon">📊</div>
+                        <h4 class="matchmaking-feature-title">Статистика</h4>
+                        <p class="matchmaking-feature-desc">
+                            Подробная статистика матчей, винрейт и прогресс вашей команды
+                        </p>
+                    </div>
+                    
+                    <div class="matchmaking-feature-card">
+                        <div class="matchmaking-feature-icon">⚙️</div>
+                        <h4 class="matchmaking-feature-title">Настройки</h4>
+                        <p class="matchmaking-feature-desc">
+                            Гибкие настройки поиска и предпочтений для идеального матча
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="matchmaking-announcement">
+                    <p>🎯 К сожалению, мы не успели доделать функции матчапов к текущему релизу, но скоро обязательно это исправим!</p>
+                </div>
+                
+                <div class="matchmaking-progress">
+                    <div class="progress-info">
+                        <span>Ожидайте релиз в ближайшее время</span>
+                        <span>75%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 75%"></div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="save-btn" onclick="matchmakingSystem.showBasicMatchmakingInfo()" 
+                            style="padding: 12px 30px; font-size: 1.1em;">
+                        📋 Посмотреть планируемый функционал
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+showBasicMatchmakingInfo() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>🎮 Планируемый функционал матчапов</h2>
+                <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 15px;">Основные возможности:</h4>
+                    <ul style="color: var(--text-secondary); line-height: 1.8; padding-left: 20px;">
+                        <li><strong>Создание матчей</strong> - 1vs1, 2vs2, 5vs5 с настройкой времени и условий</li>
+                        <li><strong>Умный поиск</strong> - подбор противников по MMR, позициям и рейтингу</li>
+                        <li><strong>Система уведомлений</strong> - приглашения в матчи и подтверждения</li>
+                        <li><strong>Статистика матчей</strong> - история, винрейт, прогресс команд</li>
+                        <li><strong>Турнирная система</strong> - автоматические турниры с призами</li>
+                        <li><strong>Рейтинговая система</strong> - ELO рейтинг для команд и игроков</li>
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(76, 175, 80, 0.1); padding: 20px; border-radius: var(--radius-medium); border: 1px solid var(--accent-primary);">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 10px;">🎯 Что уже готово:</h4>
+                    <p style="color: var(--text-secondary); margin: 0;">
+                        • Базовая архитектура системы<br>
+                        • Интеграция с профилями и командами<br>
+                        • Система уведомлений<br>
+                        • Интерфейс для создания матчей
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 25px;">
+                    <button class="save-btn" onclick="this.closest('.modal').remove()">
+                        Понятно, ждем с нетерпением! 🎮
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+
 
 loadMatchmakingUI() {
     const matchmakingHTML = `

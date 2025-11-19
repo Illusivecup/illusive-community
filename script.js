@@ -2094,50 +2094,10 @@ setupAdminAuthListener() {
     });
 }
 
-    // === ОБРАБОТЧИКИ СОБЫТИЙ ===
-    setupEventListeners() {
-        // ... существующий код ...
-        
-        // 👇 И ЗДЕСЬ ДОБАВЛЯЕМ ОБРАБОТЧИК ДЛЯ АДМИН-КНОПКИ
-        const adminBtn = document.getElementById('adminBtn');
-if (adminBtn) {
-    adminBtn.addEventListener('click', () => {
-        if (!this.currentUser) {
-            alert('❌ Для доступа к админ-панели необходимо авторизоваться');
-            this.showSection('auth');
-            return;
-        }
-        
-        this.showSection('admin');
-        // Сбрасываем админ-авторизацию при каждом входе
-        if (this.adminPanel) {
-            this.adminPanel.hideAdminPanel();
-        }
-    });
-}
-    }
-
-    // === ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК КОМАНД ===
-    switchTeamTab(tabName) {
-        console.log(`🔄 Переключение на вкладку: ${tabName}`);
-        document.querySelectorAll('.team-tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.team-tab-pane').forEach(pane => pane.classList.remove('active'));
-        
-        const activeButton = document.querySelector(`[onclick="app.switchTeamTab('${tabName}')"]`);
-        const activePane = document.getElementById(tabName);
-        
-        if (activeButton && activePane) {
-            activeButton.classList.add('active');
-            activePane.classList.add('active');
-        }
-    }
-
-    // === ОБРАБОТЧИКИ СОБЫТИЙ ===
 setupEventListeners() {
-
     console.log('🔧 Настройка обработчиков событий...');
-    
-    // Навигация
+
+    // === НАВИГАЦИЯ ===
     const profileBtn = document.getElementById('profileBtn');
     if (profileBtn) profileBtn.addEventListener('click', () => this.showSection('profile'));
     
@@ -2157,79 +2117,79 @@ setupEventListeners() {
             this.loadNotifications();
         });
     }
-    // Делегирование событий для уведомлений матчапов
-document.addEventListener('click', (e) => {
-    const target = e.target;
-    
-    if (target.hasAttribute('data-action')) {
-        const action = target.getAttribute('data-action');
-        const notificationId = target.getAttribute('data-notification-id');
-        const matchId = target.getAttribute('data-match-id');
-        
-        if (action === 'acceptMatchInvite' && this.matchmakingSystem) {
-            this.matchmakingSystem.acceptMatchInvite(notificationId, matchId);
-        } else if (action === 'rejectMatchInvite' && this.matchmakingSystem) {
-            this.matchmakingSystem.rejectMatchInvite(notificationId, matchId);
-        }
-    }
-});
 
-const adminBtn = document.getElementById('adminBtn');
-if (adminBtn) {
-    adminBtn.addEventListener('click', async () => {
-        if (!this.currentUser) {
-            alert('❌ Для доступа к админ-панели необходимо авторизоваться');
-            this.showSection('auth');
-            return;
-        }
+    // Делегирование событий для уведомлений матчапов
+    document.addEventListener('click', (e) => {
+        const target = e.target;
         
-        // 👇 ДОБАВЬТЕ ПРОВЕРКУ ПРАВ
-        const isAdmin = await this.checkAdminRights();
-        if (!isAdmin) {
-            alert('❌ Недостаточно прав для доступа к админ-панели');
-            this.showSection('profile');
-            return;
-        }
-        
-        this.showSection('admin');
-        if (this.adminPanel) {
-            this.adminPanel.hideAdminPanel();
+        if (target.hasAttribute('data-action')) {
+            const action = target.getAttribute('data-action');
+            const notificationId = target.getAttribute('data-notification-id');
+            const matchId = target.getAttribute('data-match-id');
+            
+            if (action === 'acceptMatchInvite' && this.matchmakingSystem) {
+                this.matchmakingSystem.acceptMatchInvite(notificationId, matchId);
+            } else if (action === 'rejectMatchInvite' && this.matchmakingSystem) {
+                this.matchmakingSystem.rejectMatchInvite(notificationId, matchId);
+            }
         }
     });
-}
-    
-    // Новые кнопки
-    const matchesBtn = document.getElementById('matchesBtn');
-    if (matchesBtn) {
-        matchesBtn.addEventListener('click', () => {
+
+    const adminBtn = document.getElementById('adminBtn');
+    if (adminBtn) {
+        adminBtn.addEventListener('click', async () => {
             if (!this.currentUser) {
-                alert('❌ Для доступа к матчапам необходимо авторизоваться');
+                alert('❌ Для доступа к админ-панели необходимо авторизоваться');
                 this.showSection('auth');
                 return;
             }
-            // Используем новую систему матчапов
-            if (this.matchmakingSystem) {
-                this.matchmakingSystem.showMatchmakingSection();
-            } else {
-                alert('❌ Система матчапов не инициализирована');
+            
+            const isAdmin = await this.checkAdminRights();
+            if (!isAdmin) {
+                alert('❌ Недостаточно прав для доступа к админ-панели');
+                this.showSection('profile');
+                return;
+            }
+            
+            this.showSection('admin');
+            if (this.adminPanel) {
+                this.adminPanel.hideAdminPanel();
             }
         });
     }
     
-const newsBtn = document.getElementById('newsBtn');
-if (newsBtn) {
-    newsBtn.addEventListener('click', () => {
+const matchesBtn = document.getElementById('matchesBtn');
+if (matchesBtn) {
+    matchesBtn.addEventListener('click', () => {
         if (!this.currentUser) {
-            alert('❌ Для просмотра новостей необходимо авторизоваться');
+            alert('❌ Для доступа к матчапам необходимо авторизоваться');
             this.showSection('auth');
             return;
         }
-        this.showSection('news');
-        this.loadNews();
+        
+        // Используем метод из matchmakingSystem
+        if (this.matchmakingSystem) {
+            this.matchmakingSystem.showMatchmakingSection();
+        } else {
+            // Если система матчапов не инициализирована, показываем простую заглушку
+            this.showBasicMatchmakingStub();
+        }
     });
 }
     
-    // 👇 ДОБАВЛЕНО: Обработчик для лидерборда
+    const newsBtn = document.getElementById('newsBtn');
+    if (newsBtn) {
+        newsBtn.addEventListener('click', () => {
+            if (!this.currentUser) {
+                alert('❌ Для просмотра новостей необходимо авторизоваться');
+                this.showSection('auth');
+                return;
+            }
+            this.showSection('news');
+            this.loadNews();
+        });
+    }
+    
     const leaderboardsBtn = document.getElementById('leaderboardsBtn');
     if (leaderboardsBtn) {
         leaderboardsBtn.addEventListener('click', () => {
@@ -2238,7 +2198,7 @@ if (newsBtn) {
         });
     }
     
-    // Авторизация
+    // === АВТОРИЗАЦИЯ ===
     document.getElementById('loginForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const email = document.getElementById('loginUsername').value;
@@ -2269,7 +2229,7 @@ if (newsBtn) {
         });
     });
     
-    // Профиль
+    // === ПРОФИЛЬ ===
     document.getElementById('saveProfileBtn').addEventListener('click', this.saveProfile);
     document.getElementById('logoutBtn').addEventListener('click', this.logoutUser);
     
@@ -2286,14 +2246,14 @@ if (newsBtn) {
         }
     });
     
-    // Друзья
+    // === ДРУЗЬЯ ===
     document.getElementById('searchFriendBtn').addEventListener('click', () => this.searchFriends());
     
-    // Команды
+    // === КОМАНДЫ ===
     document.getElementById('createTeamBtn').addEventListener('click', () => this.showCreateTeamModal());
     document.getElementById('joinTeamBtn').addEventListener('click', () => this.showJoinTeamModal());
     
-    // 👇 ДОБАВЛЕНО: Обработчики для фильтров лидерборда
+    // === ЛИДЕРБОРД ===
     const leaderboardFilter = document.getElementById('leaderboardFilter');
     if (leaderboardFilter) {
         leaderboardFilter.addEventListener('change', () => this.loadLeaderboards());
@@ -2303,6 +2263,25 @@ if (newsBtn) {
     if (refreshLeaderboardBtn) {
         refreshLeaderboardBtn.addEventListener('click', () => this.loadLeaderboards());
     }
+    
+    // === УДАЛЕНИЕ КОМАНДЫ ===
+    document.getElementById('confirmDeleteTeamBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.deleteTeam();
+    });
+
+    document.getElementById('cancelDeleteTeamBtn')?.addEventListener('click', () => {
+        this.closeDeleteTeamModal();
+    });
+
+    document.getElementById('closeDeleteTeamModal')?.addEventListener('click', () => {
+        this.closeDeleteTeamModal();
+    });
+
+    document.getElementById('deleteTeamForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.deleteTeam();
+    });
     
     // Закрытие модальных окон
     document.getElementById('closeCreateTeamModal').addEventListener('click', () => this.closeCreateTeamModal());
@@ -2322,8 +2301,24 @@ if (newsBtn) {
             document.getElementById(tabName).classList.add('active');
         });
     });
+
+    // === НОВОСТИ ===
+    const refreshNewsBtn = document.getElementById('refreshNews');
+    if (refreshNewsBtn) {
+        refreshNewsBtn.addEventListener('click', () => this.loadNews());
+    }
+
+    const newsFilter = document.getElementById('newsFilter');
+    if (newsFilter) {
+        newsFilter.addEventListener('change', () => this.loadNews());
+    }
+
+    const timeFilter = document.getElementById('timeFilter');
+    if (timeFilter) {
+        timeFilter.addEventListener('change', () => this.loadNews());
+    }
     
-    // Глобальные обработчики
+    // === ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ ===
     document.addEventListener('click', (event) => {
         if (event.target.classList.contains('modal')) {
             this.closeAllModals();
@@ -2337,23 +2332,24 @@ if (newsBtn) {
     });
     
     console.log('✅ Обработчики событий настроены');
-
-const refreshNewsBtn = document.getElementById('refreshNews');
-if (refreshNewsBtn) {
-    refreshNewsBtn.addEventListener('click', () => this.loadNews());
 }
 
-const newsFilter = document.getElementById('newsFilter');
-if (newsFilter) {
-    newsFilter.addEventListener('change', () => this.loadNews());
-}
 
-const timeFilter = document.getElementById('timeFilter');
-if (timeFilter) {
-    timeFilter.addEventListener('change', () => this.loadNews());
-}
+    // === ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК КОМАНД ===
+    switchTeamTab(tabName) {
+        console.log(`🔄 Переключение на вкладку: ${tabName}`);
+        document.querySelectorAll('.team-tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.team-tab-pane').forEach(pane => pane.classList.remove('active'));
+        
+        const activeButton = document.querySelector(`[onclick="app.switchTeamTab('${tabName}')"]`);
+        const activePane = document.getElementById(tabName);
+        
+        if (activeButton && activePane) {
+            activeButton.classList.add('active');
+            activePane.classList.add('active');
+        }
+    }
 
-}
 
     setupTeamEventListeners() {
         console.log('🔧 Настройка обработчиков событий для команд...');
