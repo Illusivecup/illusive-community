@@ -982,61 +982,98 @@ getUserMatchActions(matchId, match) {
     }
 
     // Методы для обработки уведомлений о матчах
-    async acceptMatchInvite(notificationId, matchId) {
-        try {
-            // Обновляем статус матча
-            await this.app.firebase.update(
-                this.app.firebase.ref(this.app.firebase.database, `matches/${matchId}`),
-                {
-                    status: 'confirmed',
-                    opponentId: this.app.currentUser.uid,
-                    opponentName: this.app.userProfile.nickname || this.app.userProfile.username,
-                    confirmedAt: Date.now()
-                }
-            );
+async acceptMatchInvite(notificationId, matchId) {
+    if (!this.app.currentUser) {
+        alert('❌ Пользователь не авторизован');
+        return;
+    }
 
-            // Отмечаем уведомление как обработанное
-            await this.app.firebase.update(
-                this.app.firebase.ref(this.app.firebase.database, `notifications/${this.app.currentUser.uid}/${notificationId}`),
-                {
-                    responded: true,
-                    read: true
-                }
-            );
+    try {
+        console.log('🔄 Accepting match invite:', { notificationId, matchId });
 
-            // Отправляем уведомление создателю матча
-            const confirmNotificationId = `match_confirmed_${Date.now()}`;
-            const confirmNotification = {
-                type: 'match_confirmed',
-                fromUserId: this.app.currentUser.uid,
-                fromUserName: this.app.userProfile.nickname || this.app.userProfile.username,
-                matchId: matchId,
-                message: `${this.app.userProfile.nickname} принял ваш матчап!`,
-                timestamp: Date.now(),
-                read: false
-            };
+        // Сначала проверяем существование матча
+        const matchRef = this.app.firebase.ref(this.app.firebase.database, `matches/${matchId}`);
+        const matchSnapshot = await this.app.firebase.get(matchRef);
+        
+        if (!matchSnapshot.exists()) {
+            alert('❌ Матчап не найден');
+            return;
+        }
 
-            const matchSnapshot = await this.app.firebase.get(
-                this.app.firebase.ref(this.app.firebase.database, `matches/${matchId}`)
-            );
+        const match = matchSnapshot.val();
+        console.log('📊 Match data:', match);
 
-            if (matchSnapshot.exists()) {
-                const match = matchSnapshot.val();
-                await this.app.firebase.set(
-                    this.app.firebase.ref(this.app.firebase.database, `notifications/${match.creatorId}/${confirmNotificationId}`),
-                    confirmNotification
-                );
-                await this.app.limitNotifications(match.creatorId);
+        // Проверяем, что матч еще в поиске
+        if (match.status !== 'searching') {
+            alert('❌ Этот матчап уже не доступен для присоединения');
+            return;
+        }
+
+        // Проверяем, что пользователь не пытается присоединиться к своему же матчу
+        if (match.creatorId === this.app.currentUser.uid) {
+            alert('❌ Вы не можете присоединиться к своему собственному матчу');
+            return;
+        }
+
+        // Обновляем статус матча
+        const updateData = {
+            status: 'confirmed',
+            opponentId: this.app.currentUser.uid,
+            opponentName: this.app.userProfile.nickname || this.app.userProfile.username,
+            confirmedAt: Date.now()
+        };
+
+        console.log('📝 Updating match with:', updateData);
+        
+        await this.app.firebase.update(matchRef, updateData);
+
+        // Отмечаем уведомление как обработанное
+        await this.app.firebase.update(
+            this.app.firebase.ref(this.app.firebase.database, `notifications/${this.app.currentUser.uid}/${notificationId}`),
+            {
+                responded: true,
+                read: true
             }
+        );
 
-            alert('✅ Матчап подтвержден!');
-            this.app.loadNotifications();
+        // Добавляем матч в список матчей пользователя
+        await this.app.firebase.update(
+            this.app.firebase.ref(this.app.firebase.database, `userMatches/${this.app.currentUser.uid}`),
+            { [matchId]: true }
+        );
 
-        } catch (error) {
-            console.error('❌ Error accepting match invite:', error);
-            alert('❌ Ошибка подтверждения матча');
+        // Отправляем уведомление создателю матча
+        const confirmNotificationId = `match_confirmed_${Date.now()}`;
+        const confirmNotification = {
+            type: 'match_confirmed',
+            fromUserId: this.app.currentUser.uid,
+            fromUserName: this.app.userProfile.nickname || this.app.userProfile.username,
+            matchId: matchId,
+            message: `${this.app.userProfile.nickname} принял ваш матчап!`,
+            timestamp: Date.now(),
+            read: false
+        };
+
+        await this.app.firebase.set(
+            this.app.firebase.ref(this.app.firebase.database, `notifications/${match.creatorId}/${confirmNotificationId}`),
+            confirmNotification
+        );
+
+        await this.app.limitNotifications(match.creatorId);
+
+        alert('✅ Матчап подтвержден!');
+        this.app.loadNotifications();
+
+    } catch (error) {
+        console.error('❌ Error accepting match invite:', error);
+        
+        if (error.code === 'PERMISSION_DENIED') {
+            alert('❌ Недостаточно прав для принятия матчапа. Проверьте правила безопасности Firebase.');
+        } else {
+            alert('❌ Ошибка подтверждения матча: ' + error.message);
         }
     }
+}
 
     async rejectMatchInvite(notificationId, matchId) {
         try {

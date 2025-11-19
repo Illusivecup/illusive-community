@@ -1092,43 +1092,53 @@ async loadNotifications() {
     }
 }
 
-    updateNotificationsUI(notifications) {
-        const systemList = document.getElementById('systemNotificationsList');
-        const historyList = document.getElementById('notificationHistoryList');
-        const badge = document.getElementById('notificationBadge');
-        
-        let systemHTML = '';
-        let historyHTML = '';
-        let unreadCount = 0;
-        
-        if (notifications && Object.keys(notifications).length > 0) {
-            Object.entries(notifications).forEach(([id, notification]) => {
-                const notificationElement = this.createNotificationElement(id, notification);
-                
-                if (!notification.read || (notification.type === 'friend_request' && !notification.responded) || 
-                    (notification.type === 'team_invite' && !notification.responded) ||
-                    (notification.type === 'team_application' && !notification.responded)) {
-                    systemHTML += notificationElement;
-                    if (!notification.read) unreadCount++;
-                } else {
-                    historyHTML += notificationElement;
-                }
-            });
-        }
-        
-        systemList.innerHTML = systemHTML || '<div class="no-data">Нет системных уведомлений</div>';
-        historyList.innerHTML = historyHTML || '<div class="no-data">История уведомлений пуста</div>';
-        
-        if (unreadCount > 0) {
-            badge.textContent = unreadCount;
-            badge.classList.remove('hidden');
-        } else {
-            badge.classList.add('hidden');
-        }
+updateNotificationsUI(notifications) {
+    const systemList = document.getElementById('systemNotificationsList');
+    const historyList = document.getElementById('notificationHistoryList');
+    const badge = document.getElementById('notificationBadge');
+    
+    let systemHTML = '';
+    let historyHTML = '';
+    let unreadCount = 0;
+    
+    if (notifications && Object.keys(notifications).length > 0) {
+        Object.entries(notifications).forEach(([id, notification]) => {
+            const notificationElement = this.createNotificationElement(id, notification);
+            
+            // Разделяем на системные (непрочитанные/необработанные) и историю
+            if (!notification.read || 
+                (notification.type === 'friend_request' && !notification.responded) || 
+                (notification.type === 'team_invite' && !notification.responded) ||
+                (notification.type === 'team_application' && !notification.responded) ||
+                (notification.type === 'match_invite' && !notification.responded)) {
+                systemHTML += notificationElement;
+                if (!notification.read) unreadCount++;
+            } else {
+                historyHTML += notificationElement;
+            }
+        });
     }
+    
+    systemList.innerHTML = systemHTML || '<div class="no-data">Нет системных уведомлений</div>';
+    historyList.innerHTML = historyHTML || '<div class="no-data">История уведомлений пуста</div>';
+    
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
 
-    createNotificationElement(id, notification) {
-        let actionsHTML = '';
+createNotificationElement(id, notification) {
+    let actionsHTML = '';
+    
+    // Для системных уведомлений (непрочитанных) показываем кнопки действий
+    if (!notification.read || 
+        (notification.type === 'friend_request' && !notification.responded) || 
+        (notification.type === 'team_invite' && !notification.responded) ||
+        (notification.type === 'team_application' && !notification.responded) ||
+        (notification.type === 'match_invite' && !notification.responded)) {
         
         switch(notification.type) {
             case 'team_invite':
@@ -1149,44 +1159,68 @@ async loadNotifications() {
                     <button class="cancel-btn" onclick="app.rejectTeamApplication('${id}', '${notification.applicationId}', '${notification.teamId}', '${notification.fromUserId}')">✗ Отклонить</button>
                 `;
                 break;
+            case 'match_invite':
+                actionsHTML = `
+                    <button class="save-btn" data-action="acceptMatchInvite" data-notification-id="${id}" data-match-id="${notification.matchId}">✓ Принять</button>
+                    <button class="cancel-btn" data-action="rejectMatchInvite" data-notification-id="${id}" data-match-id="${notification.matchId}">✗ Отклонить</button>
+                `;
+                break;
             default:
                 if (!notification.read) {
                     actionsHTML = `<button class="add-btn" onclick="app.markNotificationAsRead('${id}')">✓ Прочитано</button>`;
                 }
-case 'match_invite':
-    actionsHTML = `
-        <button class="save-btn" data-action="acceptMatchInvite" data-notification-id="${id}" data-match-id="${notification.matchId}">✓ Принять</button>
-        <button class="cancel-btn" data-action="rejectMatchInvite" data-notification-id="${id}" data-match-id="${notification.matchId}">✗ Отклонить</button>
-    `;
-    break;
-case 'match_confirmed':
-    if (!notification.read) {
-        actionsHTML = `<button class="add-btn" onclick="app.markNotificationAsRead('${id}')">✓ Прочитано</button>`;
-    }
-    break;
+                break;
         }
-        
-        let messageWithLinks = notification.message;
-        if (notification.fromUserName) {
-            const userNameRegex = new RegExp(notification.fromUserName, 'g');
-            messageWithLinks = messageWithLinks.replace(userNameRegex, 
-                `<span class="clickable-nickname" onclick="app.viewUserProfile('${notification.fromUserId}')">${notification.fromUserName}</span>`
-            );
-        }
-        
-        return `
-            <div class="notification-item ${notification.read ? '' : 'unread'}">
-                <div class="notification-content">
-                    <div class="notification-type">${this.getNotificationType(notification.type)}</div>
-                    <div>${messageWithLinks}</div>
-                    <div class="notification-time">${this.formatTime(notification.timestamp)}</div>
-                </div>
-                <div class="notification-actions">
-                    ${actionsHTML}
-                </div>
-            </div>
+    } else {
+        // Для истории уведомлений (прочитанных) показываем только кнопку удаления
+        actionsHTML = `
+            <button class="cancel-btn delete-notification-btn" onclick="app.deleteNotification('${id}')" 
+                    title="Удалить уведомление" style="padding: 6px 12px; font-size: 0.8em;">
+                🗑️ Удалить
+            </button>
         `;
     }
+    
+    let messageWithLinks = notification.message;
+    if (notification.fromUserName) {
+        const userNameRegex = new RegExp(notification.fromUserName, 'g');
+        messageWithLinks = messageWithLinks.replace(userNameRegex, 
+            `<span class="clickable-nickname" onclick="app.viewUserProfile('${notification.fromUserId}')">${notification.fromUserName}</span>`
+        );
+    }
+    
+    return `
+        <div class="notification-item ${notification.read ? '' : 'unread'}">
+            <div class="notification-content">
+                <div class="notification-type">${this.getNotificationType(notification.type)}</div>
+                <div>${messageWithLinks}</div>
+                <div class="notification-time">${this.formatTime(notification.timestamp)}</div>
+            </div>
+            <div class="notification-actions">
+                ${actionsHTML}
+            </div>
+        </div>
+    `;
+}
+
+async deleteNotification(notificationId) {
+    if (!this.currentUser || !confirm('🗑️ Удалить это уведомление?')) {
+        return;
+    }
+    
+    try {
+        await this.firebase.remove(
+            this.firebase.ref(this.firebase.database, `notifications/${this.currentUser.uid}/${notificationId}`)
+        );
+        
+        console.log('✅ Уведомление удалено:', notificationId);
+        this.loadNotifications();
+        
+    } catch (error) {
+        console.error('❌ Ошибка удаления уведомления:', error);
+        alert('❌ Ошибка удаления уведомления');
+    }
+}
 
 async acceptFriendRequest(notificationId, fromUserId) {
     if (!this.currentUser) return;
@@ -3413,3 +3447,9 @@ document.addEventListener('DOMContentLoaded', async function() {  // ДОБАВ�
 
 window.showTeamCardModal = (teamId) => app.showTeamCardModal(teamId);
 window.applyToTeamFromCard = (teamId) => app.applyToTeamFromCard(teamId);
+// Глобальная функция для удаления уведомлений
+window.deleteNotification = (notificationId) => {
+    if (app && app.deleteNotification) {
+        app.deleteNotification(notificationId);
+    }
+};

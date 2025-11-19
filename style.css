@@ -3269,3 +3269,29 @@ body {
     0% { left: -100%; }
     100% { left: 100%; }
 }
+
+/* Стили для кнопки удаления уведомлений */
+.delete-notification-btn {
+    background: linear-gradient(135deg, #6b7280, #4b5563) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid #6b7280 !important;
+    padding: 6px 12px !important;
+    font-size: 0.8em !important;
+    transition: all var(--transition-normal) !important;
+}
+
+.delete-notification-btn:hover {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    border-color: #ef4444 !important;
+    transform: scale(1.05) !important;
+}
+
+/* Стили для уведомлений в истории */
+.notification-item:not(.unread) {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.notification-item:not(.unread) .notification-content {
+    opacity: 0.8;
+}
