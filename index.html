@@ -595,36 +595,36 @@
         </div>
     </div>
 
-    <div id="invitePlayersModal" class="modal hidden">
-        <div class="modal-content large-modal">
-            <div class="modal-header">
-                <h2>👥 Пригласить игроков в команду</h2>
-                <button class="close-modal" id="closeInvitePlayersModal">×</button>
+<div id="invitePlayersModal" class="modal hidden">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h2>👥 Пригласить игроков в команду</h2>
+            <button class="close-modal" id="closeInvitePlayersModal">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="friendSearchInput">Поиск друзей:</label>
+                <input type="text" id="friendSearchInput" class="form-input" placeholder="Введите имя друга..." autocomplete="off">
+                <button id="searchFriendsBtn" class="add-btn" style="margin-top: 10px;">🔍 Найти</button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="friendSearchInput">Поиск друзей:</label>
-                    <input type="text" id="friendSearchInput" class="form-input" placeholder="Введите имя друга..." autocomplete="off">
-                    <button id="searchFriendsBtn" class="add-btn" style="margin-top: 10px;">🔍 Найти</button>
+            
+            <div id="friendsSearchResults" class="friends-search-results">
+                <!-- Результаты поиска друзей -->
+            </div>
+            
+            <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
+                <h4 style="margin-bottom: 10px;">Ваши друзья:</h4>
+                <div id="friendsListForInvite" class="friends-list">
+                    <!-- Список друзей для приглашения -->
                 </div>
-                
-                <div id="friendsSearchResults" class="friends-search-results">
-                    <!-- Результаты поиска друзей -->
-                </div>
-                
-                <div class="form-group">
-                    <h4>Ваши друзья:</h4>
-                    <div id="friendsListForInvite" class="friends-list">
-                        <!-- Список друзей для приглашения -->
-                    </div>
-                </div>
-                
-                <div class="form-actions">
-                    <button id="cancelInvitePlayersBtn" class="cancel-btn">❌ Закрыть</button>
-                </div>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 20px;">
+                <button id="cancelInvitePlayersBtn" class="cancel-btn">❌ Закрыть</button>
             </div>
         </div>
     </div>
+</div>
 
     <div id="editTeamModal" class="modal hidden">
         <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">

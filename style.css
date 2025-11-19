@@ -3009,3 +3009,110 @@ body {
     }
 }
 
+/* === ИСПРАВЛЕНИЯ ДЛЯ МОДАЛЬНОГО ОКНА ПРИГЛАШЕНИЯ ДРУЗЕЙ === */
+
+#invitePlayersModal .modal-content.large-modal {
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#invitePlayersModal .modal-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 20px;
+}
+
+#friendsListForInvite {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 15px;
+    padding-right: 10px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-medium);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Стили для скроллбара в списке друзей */
+#friendsListForInvite::-webkit-scrollbar {
+    width: 8px;
+}
+
+#friendsListForInvite::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    margin: 5px 0;
+}
+
+#friendsListForInvite::-webkit-scrollbar-thumb {
+    background: var(--accent-primary);
+    border-radius: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+#friendsListForInvite::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-secondary);
+}
+
+/* Для Firefox */
+#friendsListForInvite {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-primary) rgba(255, 255, 255, 0.05);
+}
+
+/* Улучшенные стили для карточек друзей в модальном окне */
+#friendsListForInvite .friend-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-medium);
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-light);
+    transition: all var(--transition-normal);
+}
+
+#friendsListForInvite .friend-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-light);
+}
+
+#friendsListForInvite .friend-card:last-child {
+    margin-bottom: 0;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    #invitePlayersModal .modal-content.large-modal {
+        margin: 10px;
+        width: calc(100% - 20px);
+        max-height: 90vh;
+    }
+    
+    #friendsListForInvite {
+        max-height: 300px;
+    }
+    
+    #invitePlayersModal .modal-body {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    #friendsListForInvite {
+        max-height: 250px;
+    }
+    
+    #invitePlayersModal .friend-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    #invitePlayersModal .friend-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
