@@ -1,99 +1,250 @@
 // === Illusive Community App ===
 class IllusiveApp {
-constructor() {
-    this.currentUser = null;
-    this.userProfile = null;
-    this.isInitialized = false;
-    this.adminPanel = null;
-    this.matchmakingSystem = null;
-    
-    // Инициализируем Firebase методы
-    this.initializeFirebaseMethods();
-    
-    // Привязываем контекст для всех методов
-    this.init = this.init.bind(this);
-    this.setupEventListeners = this.setupEventListeners.bind(this);
-    this.setupAuthStateListener = this.setupAuthStateListener.bind(this);
-    this.showSection = this.showSection.bind(this);
-    this.hideAllSections = this.hideAllSections.bind(this);
-    this.loginUser = this.loginUser.bind(this);
-    this.registerUser = this.registerUser.bind(this);
-    this.logoutUser = this.logoutUser.bind(this);
-    this.saveProfile = this.saveProfile.bind(this);
-    this.uploadAvatar = this.uploadAvatar.bind(this);
-    this.loadLeaderboards = this.loadLeaderboards.bind(this);
-}
-
-initializeFirebaseMethods() {
-    // Проверяем, что Firebase загружен и инициализирован
-    if (typeof firebase === 'undefined' || !firebase.apps.length) {
-        console.error('❌ Firebase not initialized');
-        return;
+    constructor() {
+        // Сначала инициализируем все свойства
+        this.currentUser = null;
+        this.userProfile = null;
+        this.isInitialized = false;
+        this.adminPanel = null;
+        this.matchmakingSystem = null;
+        this.firebase = null;
+        
+        // Инициализируем Firebase методы
+        this.initializeFirebaseMethods();
+        
+        // Теперь безопасно привязываем методы
+        this.bindAllMethods();
     }
 
-    // Правильная инициализация для Firebase 9.x compat
-    this.firebase = {
-        // Auth methods
-        auth: firebase.auth(),
-        createUserWithEmailAndPassword: (email, password) => 
-            firebase.auth().createUserWithEmailAndPassword(email, password),
-        signInWithEmailAndPassword: (email, password) => 
-            firebase.auth().signInWithEmailAndPassword(email, password),
-        signOut: () => firebase.auth().signOut(),
-        onAuthStateChanged: (callback) => 
-            firebase.auth().onAuthStateChanged(callback),
-        
-        // Database methods - правильный синтаксис для Firebase 9.x compat
-        database: firebase.database,
-        ref: (db, path) => firebase.database().ref(path),
-        set: (ref, data) => ref.set(data),
-        get: (ref) => ref.get(),
-        update: (ref, data) => ref.update(data),
-        push: (ref, data) => ref.push(data),
-        onValue: (ref, callback) => ref.on('value', callback),
-        off: (ref, eventType = 'value', callback) => ref.off(eventType, callback),
-        remove: (ref) => ref.remove(),
-        
-        // Storage methods
-        storage: firebase.storage(),
-        storageRef: (path) => firebase.storage().ref(path),
-        uploadBytes: (ref, file) => ref.put(file),
-        getDownloadURL: (ref) => ref.getDownloadURL()
-    };
+    bindAllMethods() {
+        // Привязываем контекст для всех методов
+        const methods = [
+            'init', 'setupEventListeners', 'setupAuthStateListener', 'showSection', 
+            'hideAllSections', 'loginUser', 'registerUser', 'logoutUser', 'saveProfile',
+            'uploadAvatar', 'loadLeaderboards', 'setupNavigation', 'setupTeamEventListeners',
+            'initAdminPanel', 'initMatchmakingSystem', 'waitForFirebase', 'createAnimatedBackground',
+            'updateConnectionStatus', 'loadUserProfile', 'updateLastOnline', 'createUserProfile',
+            'showAuthMessage', 'showUnauthenticatedUI', 'showAuthenticatedUI', 'updateProfileUI',
+            'fileToBase64', 'updateAvatarUI', 'loadFriendsList', 'searchFriends', 'sendFriendRequest',
+            'loadTeamsList', 'createTeamCard', 'applyToTeam', 'createTeam', 'loadTeamInfo',
+            'updateTeamUI', 'renderTeamVisitingCard', 'loadCaptainInfo', 'renderTeamPlayers',
+            'loadNotifications', 'updateNotificationsUI', 'createNotificationElement',
+            'acceptFriendRequest', 'addFriend', 'rejectFriendRequest', 'acceptTeamInvite',
+            'rejectTeamInvite', 'acceptTeamApplication', 'rejectTeamApplication',
+            'markNotificationAsRead', 'limitNotifications', 'loadLeaderboards',
+            'updateLeaderboardsStats', 'renderLeaderboardsList', 'checkAndHideAdminButton',
+            'checkAdminRights', 'getPositionName', 'getNotificationType', 'formatTime',
+            'calculateTeamAverageMMR', 'viewUserProfile', 'showTeamCardModal',
+            'renderTeamCardModal', 'createTeamVisitingCardHTML', 'applyToTeamFromCard',
+            'showUserProfileModal', 'showCreateTeamModal', 'closeCreateTeamModal',
+            'showJoinTeamModal', 'closeJoinTeamModal', 'closeEditTeamModal', 'closeAllModals',
+            'switchTeamTab', 'showInvitePlayersModal', 'closeInvitePlayersModal',
+            'loadFriendsForInvite', 'sendTeamInvite', 'leaveTeam', 'showDeleteTeamModal',
+            'deleteTeam', 'closeDeleteTeamModal', 'showEditTeamModal', 'loadTeamMembersForEdit',
+            'updateTeamGeneralSettings', 'updateTeamMember', 'recalculateTeamAverageMMR',
+            'removeTeamMember', 'transferCaptaincy', 'loadNews', 'filterNews', 'renderNewsList',
+            'getNewsTypeIcon', 'getNewsTypeText', 'formatNewsMessage', 'getNewsActions',
+            'getNewsTimeAgo', 'updateNewsStats', 'createNews', 'createTeamCreatedNews',
+            'createPlayerJoinedNews', 'createPlayerLeftNews', 'createCaptainChangeNews',
+            'createTeamDeletedNews', 'getUserProfile', 'getTeamInfo', 'testNewsCreation',
+            'editTeamSlogan'
+        ];
 
-    console.log('✅ Firebase methods initialized');
-}
+        methods.forEach(method => {
+            if (typeof this[method] === 'function') {
+                this[method] = this[method].bind(this);
+            }
+        });
 
-async init() {
-    if (this.isInitialized) {
-        console.log('🛑 App already initialized');
-        return;
+        console.log('✅ All methods bound successfully');
     }
 
+    initializeFirebaseMethods() {
+        // Проверяем, что Firebase загружен и инициализирован
+        if (typeof firebase === 'undefined' || !firebase.apps.length) {
+            console.error('❌ Firebase not initialized');
+            this.createFirebaseStub();
+            return;
+        }
+
+        // Правильная инициализация для Firebase 9.x compat
+        this.firebase = {
+            // Auth methods
+            auth: firebase.auth(),
+            createUserWithEmailAndPassword: (email, password) => 
+                firebase.auth().createUserWithEmailAndPassword(email, password),
+            signInWithEmailAndPassword: (email, password) => 
+                firebase.auth().signInWithEmailAndPassword(email, password),
+            signOut: () => firebase.auth().signOut(),
+            onAuthStateChanged: (callback) => 
+                firebase.auth().onAuthStateChanged(callback),
+            
+            // Database methods
+            database: firebase.database,
+            ref: (db, path) => firebase.database().ref(path),
+            set: (ref, data) => ref.set(data),
+            get: (ref) => ref.get(),
+            update: (ref, data) => ref.update(data),
+            push: (ref, data) => ref.push(data),
+            onValue: (ref, callback) => ref.on('value', callback),
+            off: (ref, eventType = 'value', callback) => ref.off(eventType, callback),
+            remove: (ref) => ref.remove(),
+            
+            // Storage methods
+            storage: firebase.storage(),
+            storageRef: (path) => firebase.storage().ref(path),
+            uploadBytes: (ref, file) => ref.put(file),
+            getDownloadURL: (ref) => ref.getDownloadURL()
+        };
+
+        console.log('✅ Firebase methods initialized');
+    }
+
+    createFirebaseStub() {
+        console.warn('⚠️ Creating Firebase stub - some features may not work');
+        this.firebase = {
+            auth: {
+                currentUser: null,
+                createUserWithEmailAndPassword: () => Promise.reject(new Error('Firebase not initialized')),
+                signInWithEmailAndPassword: () => Promise.reject(new Error('Firebase not initialized')),
+                signOut: () => Promise.reject(new Error('Firebase not initialized')),
+                onAuthStateChanged: () => {}
+            },
+            database: {},
+            ref: () => ({ 
+                set: () => Promise.reject(new Error('Firebase not initialized')),
+                get: () => Promise.reject(new Error('Firebase not initialized')),
+                update: () => Promise.reject(new Error('Firebase not initialized')),
+                push: () => Promise.reject(new Error('Firebase not initialized')),
+                remove: () => Promise.reject(new Error('Firebase not initialized')),
+                on: () => {},
+                off: () => {}
+            }),
+            set: () => Promise.reject(new Error('Firebase not initialized')),
+            get: () => Promise.reject(new Error('Firebase not initialized')),
+            update: () => Promise.reject(new Error('Firebase not initialized')),
+            push: () => Promise.reject(new Error('Firebase not initialized')),
+            onValue: () => {},
+            off: () => {},
+            remove: () => Promise.reject(new Error('Firebase not initialized')),
+            storage: {},
+            storageRef: () => ({ 
+                put: () => Promise.reject(new Error('Firebase not initialized')),
+                getDownloadURL: () => Promise.reject(new Error('Firebase not initialized'))
+            }),
+            uploadBytes: () => Promise.reject(new Error('Firebase not initialized')),
+            getDownloadURL: () => Promise.reject(new Error('Firebase not initialized'))
+        };
+    }
+
+initAdminPanel() {
     try {
-        console.log('🚀 Инициализация Illusive Community...');
+        // Проверяем, что файл админ-панели загружен
+        if (typeof AdminPanel === 'undefined') {
+            console.warn('⚠️ AdminPanel not found - skipping admin initialization');
+            return;
+        }
         
-        // Проверяем загрузку Firebase
-        await this.waitForFirebase();
+        // Проверяем, что админ конфиг загружен
+        if (typeof ADMIN_CONFIG === 'undefined') {
+            console.warn('⚠️ ADMIN_CONFIG not found - admin panel will not work');
+            return;
+        }
         
-        this.createAnimatedBackground();
-        this.setupEventListeners();
-        this.setupNavigation();
-        this.setupAuthStateListener();
-        this.setupTeamEventListeners();
-        this.initAdminPanel(); // 👈 ДОБАВЬТЕ ЭТУ СТРОЧКУ
-        this.initMatchmakingSystem(); // ← эта строка должна быть
+        console.log('🔐 Admin config detected:', ADMIN_CONFIG.adminEmail);
         
-        this.updateConnectionStatus(true);
-        this.isInitialized = true;
+        // Создаем экземпляр админ-панели
+        this.adminPanel = new AdminPanel(this);
         
-        console.log('✅ Illusive Community успешно инициализирован');
+        // Инициализируем админ-панель
+        this.adminPanel.init().then(() => {
+            console.log('✅ Admin panel initialized successfully');
+            // Делаем доступной глобально через основной app
+            window.adminPanel = this.adminPanel;
+        }).catch(error => {
+            console.error('❌ Admin panel initialization failed:', error);
+        });
         
     } catch (error) {
-        console.error('❌ Ошибка инициализации:', error);
-        this.updateConnectionStatus(false);
+        console.error('❌ Error initializing admin panel:', error);
     }
 }
+
+    // ДОБАВЬТЕ ЭТОТ МЕТОД
+    async init() {
+        console.log('🚀 Initializing Illusive App...');
+        
+        try {
+            // Ждем инициализации Firebase
+            await this.waitForFirebase();
+            
+            // Создаем анимированный фон
+            this.createAnimatedBackground();
+            
+            // Настраиваем слушатели событий
+            this.setupEventListeners();
+            
+            // Настраиваем слушатель состояния аутентификации
+            this.setupAuthStateListener();
+            
+            // Настраиваем навигацию
+            this.setupNavigation();
+            
+            // Настраиваем обработчики для команд
+            this.setupTeamEventListeners();
+            
+            // Инициализируем админ-панель если доступна
+            this.initAdminPanel();
+            
+            // Инициализируем систему матчмейкинга если доступна
+            this.initMatchmakingSystem();
+            
+            // Показываем начальный UI
+            if (this.currentUser) {
+                this.showAuthenticatedUI();
+            } else {
+                this.showUnauthenticatedUI();
+            }
+            
+            console.log('✅ Illusive App initialized successfully');
+            this.isInitialized = true;
+            
+        } catch (error) {
+            console.error('❌ App initialization failed:', error);
+            this.showErrorMessage('Ошибка инициализации приложения');
+        }
+    }
+
+    // ДОБАВЬТЕ ЭТОТ ВСПОМОГАТЕЛЬНЫЙ МЕТОД
+    showErrorMessage(message) {
+        // Создаем или находим элемент для отображения ошибок
+        let errorElement = document.getElementById('globalError');
+        if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.id = 'globalError';
+            errorElement.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #ff4444;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            document.body.appendChild(errorElement);
+        }
+        
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        
+        // Автоматически скрываем через 5 секунд
+        setTimeout(() => {
+            errorElement.style.display = 'none';
+        }, 5000);
+    }
 
 async waitForFirebase() {
     return new Promise((resolve, reject) => {
@@ -789,7 +940,6 @@ async createTeamCard(teamId, team) {
     
     let captainName = 'Неизвестно';
     try {
-        // Используем this.firebase вместо window.firebase
         const captainSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `users/${team.captain}`));
         if (captainSnapshot.exists()) {
             const captain = captainSnapshot.val();
@@ -801,7 +951,6 @@ async createTeamCard(teamId, team) {
     
     let hasApplied = false;
     if (this.currentUser) {
-        // Используем this.firebase вместо window.firebase
         const applicationsSnapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teamApplications/${teamId}`));
         if (applicationsSnapshot.exists()) {
             const applications = applicationsSnapshot.val();
@@ -812,7 +961,10 @@ async createTeamCard(teamId, team) {
     return `
         <div class="team-mini-card">
             <div class="team-mini-header">
-                <h4>${team.name}</h4>
+                <h4 class="clickable-team" onclick="app.showTeamCardModal('${teamId}')" 
+                    style="cursor: pointer; color: var(--accent-primary); text-decoration: underline; transition: all 0.3s ease;">
+                    ${team.name}
+                </h4>
                 <span class="team-status ${isFull ? 'status-full' : 'status-open'}">
                     ${isFull ? '✅ Полный состав' : '🟢 Ищут игроков'}
                 </span>
@@ -1008,20 +1160,73 @@ async loadTeamInfo() {
         }
     }
 
-    renderTeamVisitingCard(team) {
-        document.getElementById('teamCardName').textContent = team.name;
-        document.getElementById('teamCardSlogan').textContent = team.slogan || 'Без слогана';
-        document.getElementById('teamAverageMMR').textContent = team.averageMMR || '0';
-        document.getElementById('teamCreationDate').textContent = new Date(team.createdAt).toLocaleDateString('ru-RU');
+renderTeamVisitingCard(team) {
+    document.getElementById('teamCardName').textContent = team.name;
+    
+    const sloganElement = document.getElementById('teamCardSlogan');
+    sloganElement.textContent = team.slogan || 'Без слогана';
+    
+    // Добавляем возможность редактирования слогана для капитана
+    if (this.currentUser && this.currentUser.uid === team.captain) {
+        sloganElement.classList.add('editable');
+        sloganElement.title = 'Кликните для редактирования слогана';
+        sloganElement.style.cursor = 'pointer';
         
-        const tournamentStatus = team.tournamentStatus === 'participating' ? 'Участвует' : 'Не участвует';
-        const tournamentColor = team.tournamentStatus === 'participating' ? '#FFD700' : 'var(--text-secondary)';
-        document.getElementById('teamTournamentStatus').textContent = tournamentStatus;
-        document.getElementById('teamTournamentStatus').style.color = tournamentColor;
-        
-        this.loadCaptainInfo(team.captain);
-        this.renderTeamPlayers(team.members || {});
+        // Удаляем старый обработчик если есть и добавляем новый
+        sloganElement.onclick = null;
+        sloganElement.addEventListener('click', () => {
+            this.editTeamSlogan(team);
+        });
+    } else {
+        sloganElement.classList.remove('editable');
+        sloganElement.title = '';
+        sloganElement.style.cursor = 'default';
+        sloganElement.onclick = null;
     }
+    
+    document.getElementById('teamAverageMMR').textContent = team.averageMMR || '0';
+    document.getElementById('teamCreationDate').textContent = new Date(team.createdAt).toLocaleDateString('ru-RU');
+    
+    const tournamentStatus = team.tournamentStatus === 'participating' ? 'Участвует' : 'Не участвует';
+    const tournamentColor = team.tournamentStatus === 'participating' ? '#FFD700' : 'var(--text-secondary)';
+    document.getElementById('teamTournamentStatus').textContent = tournamentStatus;
+    document.getElementById('teamTournamentStatus').style.color = tournamentColor;
+    
+    this.loadCaptainInfo(team.captain);
+    this.renderTeamPlayers(team.members || {});
+}
+
+async editTeamSlogan(team) {
+    if (!this.userProfile.teamId || this.currentUser.uid !== team.captain) {
+        return;
+    }
+    
+    const newSlogan = prompt('Введите новый слоган команды:', team.slogan || '');
+    
+    if (newSlogan === null) return; // Пользователь отменил
+    
+    const trimmedSlogan = newSlogan.trim();
+    
+    if (trimmedSlogan.length > 100) {
+        alert('❌ Слоган не может превышать 100 символов');
+        return;
+    }
+    
+    try {
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`), {
+            slogan: trimmedSlogan,
+            updatedAt: Date.now()
+        });
+        
+        // Обновляем UI
+        document.getElementById('teamCardSlogan').textContent = trimmedSlogan || 'Без слогана';
+        alert('✅ Слоган команды обновлен!');
+        
+    } catch (error) {
+        console.error('❌ Ошибка обновления слогана:', error);
+        alert('❌ Ошибка обновления слогана');
+    }
+}
 
 async loadCaptainInfo(captainId) {
     try {
@@ -1959,6 +2164,27 @@ async applyToTeamFromCard(teamId) {
     }
 }
 
+async applyToTeamFromCard(teamId) {
+    if (!this.currentUser) {
+        alert('❌ Для подачи заявки необходимо авторизоваться');
+        return;
+    }
+    
+    if (this.userProfile.teamId) {
+        alert('❌ Вы уже состоите в команде');
+        return;
+    }
+    
+    // Используем существующий метод подачи заявки
+    await this.applyToTeam(teamId);
+    
+    // Закрываем модальное окно после подачи заявки
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
     showUserProfileModal(user) {
         const modal = document.createElement('div');
         modal.className = 'modal';
@@ -2729,7 +2955,6 @@ async loadTeamMembersForEdit(team = null) {
     
     try {
         if (!team) {
-            // Используем this.firebase вместо window.firebase
             const snapshot = await this.firebase.get(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`));
             if (!snapshot.exists()) return;
             team = snapshot.val();
@@ -2741,18 +2966,36 @@ async loadTeamMembersForEdit(team = null) {
         let membersHTML = `
             <div class="team-general-settings">
                 <h3 style="color: var(--accent-primary); margin-bottom: 15px;">⚙️ Общие настройки команды</h3>
+                
+                <!-- Поле для редактирования слогана -->
                 <div class="form-group">
-                    <label>Статус участия в турнирах:</label>
+                    <label for="teamSloganEdit">Слоган команды:</label>
+                    <input type="text" id="teamSloganEdit" class="form-input" 
+                           value="${team.slogan || ''}" 
+                           placeholder="Введите новый слоган команды" 
+                           maxlength="100">
+                    <div style="font-size: 0.8em; color: var(--text-secondary); margin-top: 5px;">
+                        Максимум 100 символов
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="teamTournamentStatusEdit">Статус участия в турнирах:</label>
                     <select id="teamTournamentStatusEdit" class="form-input">
                         <option value="not_participating" ${team.tournamentStatus === 'not_participating' ? 'selected' : ''}>Не участвует</option>
                         <option value="participating" ${team.tournamentStatus === 'participating' ? 'selected' : ''}>Участвует в турнирах</option>
                     </select>
                 </div>
-                <button class="save-btn" onclick="app.updateTeamGeneralSettings()" style="margin-bottom: 20px;">💾 Сохранить настройки</button>
+                
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button class="save-btn" onclick="app.updateTeamGeneralSettings()">💾 Сохранить настройки</button>
+                </div>
             </div>
-            <h3 style="color: var(--accent-primary); margin: 20px 0 15px 0;">👥 Управление составом</h3>
+            
+            <h3 style="color: var(--accent-primary); margin: 30px 0 15px 0;">👥 Управление составом</h3>
         `;
         
+        // Остальной код для списка участников остается без изменений
         Object.entries(team.members || {}).forEach(([memberId, memberData]) => {
             const isCaptain = memberData.role === 'captain';
             const isCurrentUser = memberId === this.currentUser.uid;
@@ -2806,15 +3049,32 @@ async updateTeamGeneralSettings() {
     
     try {
         const tournamentStatus = document.getElementById('teamTournamentStatusEdit').value;
+        const teamSlogan = document.getElementById('teamSloganEdit').value.trim();
         
-        // Используем this.firebase вместо window.firebase
-        await this.firebase.update(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`), {
+        // Валидация слогана
+        if (teamSlogan.length > 100) {
+            alert('❌ Слоган не может превышать 100 символов');
+            return;
+        }
+        
+        const updateData = {
             tournamentStatus: tournamentStatus,
             updatedAt: Date.now()
-        });
+        };
+        
+        // Добавляем слоган только если он не пустой
+        if (teamSlogan) {
+            updateData.slogan = teamSlogan;
+        } else {
+            updateData.slogan = ''; // Можно очистить слоган
+        }
+        
+        await this.firebase.update(this.firebase.ref(this.firebase.database, `teams/${this.userProfile.teamId}`), updateData);
+        
+        // Обновляем UI
+        this.loadTeamInfo();
         
         alert('✅ Настройки команды обновлены!');
-        this.loadTeamInfo();
         
     } catch (error) {
         console.error('❌ Ошибка обновления настроек команды:', error);
@@ -3453,3 +3713,7 @@ window.deleteNotification = (notificationId) => {
         app.deleteNotification(notificationId);
     }
 };
+
+window.app = app;
+window.showTeamCardModal = (teamId) => app.showTeamCardModal(teamId);
+window.applyToTeamFromCard = (teamId) => app.applyToTeamFromCard(teamId);

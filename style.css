@@ -3295,3 +3295,51 @@ body {
 .notification-item:not(.unread) .notification-content {
     opacity: 0.8;
 }
+
+/* Стили для кликабельных команд */
+.clickable-team {
+    color: var(--accent-primary);
+    cursor: pointer;
+    text-decoration: underline;
+    transition: all var(--transition-normal);
+    font-weight: 600;
+}
+
+.clickable-team:hover {
+    color: var(--accent-secondary);
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+    transform: scale(1.05);
+}
+
+/* Улучшение карточек команд при наведении */
+.team-mini-card:hover .clickable-team {
+    color: var(--accent-secondary);
+}
+
+
+/* Стили для редактируемого слогана */
+.team-subtitle.editable {
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    border-bottom: 1px dashed var(--text-secondary);
+}
+
+.team-subtitle.editable:hover {
+    color: var(--accent-primary);
+    border-bottom-color: var(--accent-primary);
+}
+
+/* Стили для формы редактирования слогана */
+.slogan-edit-form {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: var(--radius-medium);
+    margin: 10px 0;
+    border: 1px solid var(--border-light);
+}
+
+.slogan-edit-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}

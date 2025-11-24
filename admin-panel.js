@@ -85,53 +85,326 @@ setupAdminEventListeners() {
     }
     
 setupDynamicEventListeners() {
-        // Делегирование событий для динамически созданных элементов
-        document.addEventListener('click', (e) => {
-            const target = e.target;
+    // Удаляем старые обработчики чтобы избежать дублирования
+    document.removeEventListener('click', this.dynamicClickHandler);
+    document.removeEventListener('change', this.dynamicChangeHandler);
+    
+    // Создаем привязанные обработчики
+    this.dynamicClickHandler = this.handleDynamicClick.bind(this);
+    this.dynamicChangeHandler = this.handleDynamicChange.bind(this);
+    
+    // Добавляем новые обработчики
+    document.addEventListener('click', this.dynamicClickHandler);
+    document.addEventListener('change', this.dynamicChangeHandler);
+    
+    console.log('✅ Dynamic event listeners setup');
+}
+
+// Обработчик кликов для динамических элементов
+handleDynamicClick(e) {
+    const target = e.target;
+    const adminItem = target.closest('.admin-item');
+    
+    if (!adminItem) return;
+    
+    // Обработка кнопок редактирования пользователей
+    if (target.classList.contains('btn-edit') || target.closest('.btn-edit')) {
+        const userId = target.getAttribute('data-user-id') || target.closest('[data-user-id]')?.getAttribute('data-user-id');
+        if (userId) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.editUserProfile(userId);
+        }
+    }
+    
+    // Обработка кнопок бана пользователей
+    if (target.classList.contains('btn-ban') || target.closest('.btn-ban')) {
+        const userId = target.getAttribute('data-user-id') || target.closest('[data-user-id]')?.getAttribute('data-user-id');
+        if (userId) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.banUser(userId);
+        }
+    }
+    
+    // Обработка кнопок удаления пользователей
+    if (target.classList.contains('btn-delete') || target.closest('.btn-delete')) {
+        const userId = target.getAttribute('data-user-id') || target.closest('[data-user-id]')?.getAttribute('data-user-id');
+        if (userId) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.deleteUser(userId);
+        }
+    }
+    
+    // Обработка кнопок разбана
+    if (target.classList.contains('btn-unban') || target.closest('.btn-unban')) {
+        const userId = target.getAttribute('data-user-id') || target.closest('[data-user-id]')?.getAttribute('data-user-id');
+        if (userId) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.unbanUser(userId);
+        }
+    }
+    
+    // Обработка кнопок редактирования команд
+    if (target.classList.contains('btn-edit-team') || target.closest('.btn-edit-team')) {
+        const teamId = target.getAttribute('data-team-id') || target.closest('[data-team-id]')?.getAttribute('data-team-id');
+        if (teamId) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.editTeam(teamId);
+        }
+    }
+    
+    // Обработка кнопок удаления команд
+    if (target.classList.contains('btn-delete-team') || target.closest('.btn-delete-team')) {
+        const teamId = target.getAttribute('data-team-id') || target.closest('[data-team-id]')?.getAttribute('data-team-id');
+        if (teamId) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.deleteTeam(teamId);
+        }
+    }
+    
+    // Обработка кнопок снятия админов
+    if (target.classList.contains('btn-demote') || target.closest('.btn-demote')) {
+        const adminKey = target.getAttribute('data-admin-key') || target.closest('[data-admin-key]')?.getAttribute('data-admin-key');
+        if (adminKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.demoteAdmin(adminKey);
+        }
+    }
+    
+    // Обработка кнопок изменения позиции игрока в модальном окне
+    if (target.classList.contains('admin-position-btn') || target.closest('.admin-position-btn')) {
+        const teamId = target.getAttribute('data-team-id') || target.closest('[data-team-id]')?.getAttribute('data-team-id');
+        const userId = target.getAttribute('data-user-id') || target.closest('[data-user-id]')?.getAttribute('data-user-id');
+        
+        if (teamId && userId) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.changePlayerPositionFromButton(teamId, userId);
+        }
+    }
+    
+    // Обработка кнопок изменения роли (капитан/участник)
+    if (target.classList.contains('admin-role-btn') || target.closest('.admin-role-btn')) {
+        const teamId = target.getAttribute('data-team-id') || target.closest('[data-team-id]')?.getAttribute('data-team-id');
+        const userId = target.getAttribute('data-user-id') || target.closest('[data-user-id]')?.getAttribute('data-user-id');
+        const newRole = target.getAttribute('data-new-role');
+        
+        if (teamId && userId && newRole) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.changePlayerRole(teamId, userId, newRole);
+        }
+    }
+    
+    // Обработка кнопок сохранения изменений команды
+    if (target.classList.contains('admin-save-team-btn') || target.closest('.admin-save-team-btn')) {
+        const teamId = target.getAttribute('data-team-id') || target.closest('[data-team-id]')?.getAttribute('data-team-id');
+        if (teamId) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.saveTeamChanges(teamId);
+        }
+    }
+}
+
+// Обработчик изменений для динамических элементов
+handleDynamicChange(e) {
+    const target = e.target;
+    
+    // Обработка изменения позиции через селект в модальном окне
+    if (target.classList.contains('admin-position-select') && target.closest('.modal')) {
+        const userId = target.getAttribute('data-user-id');
+        const teamId = this.getTeamIdFromModal(target);
+        
+        if (teamId && userId) {
+            const newPosition = target.value;
             
-            // Обработка кнопок редактирования пользователей
-            if (target.classList.contains('btn-edit') && target.closest('.admin-item')) {
-                const userId = target.getAttribute('data-user-id');
-                if (userId) this.editUserProfile(userId);
-            }
+            // Автоматически сохраняем при изменении (опционально)
+            // Можно раскомментировать если нужно автоматическое сохранение
+            // this.changePlayerPosition(teamId, userId, newPosition);
             
-            // Обработка кнопок бана пользователей
-            if (target.classList.contains('btn-ban') && target.closest('.admin-item')) {
-                const userId = target.getAttribute('data-user-id');
-                if (userId) this.banUser(userId);
+            console.log(`🔄 Position changed for user ${userId} in team ${teamId}: ${newPosition}`);
+        }
+    }
+    
+    // Обработка поисковых полей
+    if (target.id === 'userSearch' || target.id === 'teamSearch') {
+        // Автопоиск при вводе (с задержкой)
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = setTimeout(() => {
+            if (target.id === 'userSearch') {
+                this.adminSearchUsers();
+            } else if (target.id === 'teamSearch') {
+                this.adminSearchTeams();
             }
-            
-            // Обработка кнопок удаления пользователей
-            if (target.classList.contains('btn-delete') && target.closest('.admin-item')) {
-                const userId = target.getAttribute('data-user-id');
-                if (userId) this.deleteUser(userId);
-            }
-            
-            // Обработка кнопок разбана
-            if (target.classList.contains('btn-unban') && target.closest('.admin-item')) {
-                const userId = target.getAttribute('data-user-id');
-                if (userId) this.unbanUser(userId);
-            }
-            
-            // Обработка кнопок редактирования команд
-            if (target.classList.contains('btn-edit-team') && target.closest('.admin-item')) {
-                const teamId = target.getAttribute('data-team-id');
-                if (teamId) this.editTeam(teamId);
-            }
-            
-            // Обработка кнопок удаления команд
-            if (target.classList.contains('btn-delete-team') && target.closest('.admin-item')) {
-                const teamId = target.getAttribute('data-team-id');
-                if (teamId) this.deleteTeam(teamId);
-            }
-            
-            // Обработка кнопок снятия админов
-            if (target.classList.contains('btn-demote') && target.closest('.admin-item')) {
-                const adminKey = target.getAttribute('data-admin-key');
-                if (adminKey) this.demoteAdmin(adminKey);
-            }
-        });
-    } 
+        }, 500);
+    }
+}
+
+// Вспомогательный метод для получения teamId из модального окна
+getTeamIdFromModal(element) {
+    const modal = element.closest('.modal');
+    if (!modal) return null;
+    
+    // Ищем teamId в различных местах модального окна
+    const saveButton = modal.querySelector('.admin-save-team-btn');
+    if (saveButton) {
+        return saveButton.getAttribute('data-team-id');
+    }
+    
+    const roleButtons = modal.querySelectorAll('.admin-role-btn');
+    if (roleButtons.length > 0) {
+        return roleButtons[0].getAttribute('data-team-id');
+    }
+    
+    const positionButtons = modal.querySelectorAll('.admin-position-btn');
+    if (positionButtons.length > 0) {
+        return positionButtons[0].getAttribute('data-team-id');
+    }
+    
+    // Пытаемся извлечь из onclick атрибутов
+    const buttons = modal.querySelectorAll('[onclick*="saveTeamChanges"]');
+    for (const button of buttons) {
+        const match = button.getAttribute('onclick')?.match(/saveTeamChanges\('([^']+)'\)/);
+        if (match) return match[1];
+    }
+    
+    return null;
+}
+
+// Метод для изменения позиции через кнопку
+async changePlayerPositionFromButton(teamId, userId) {
+    const selectElement = document.querySelector(`.admin-position-select[data-user-id="${userId}"]`);
+    if (!selectElement) {
+        console.error('❌ Select element not found for user:', userId);
+        return;
+    }
+    
+    const newPosition = selectElement.value;
+    await this.changePlayerPosition(teamId, userId, newPosition);
+}
+
+// Обновим метод loadTeamMembersForAdminEdit для использования новых классов
+async loadTeamMembersForAdminEdit(teamId, team) {
+    const membersList = document.getElementById('adminTeamMembersList');
+    
+    let membersHTML = '';
+    
+    for (const [userId, memberData] of Object.entries(team.members || {})) {
+        // Получаем информацию об игроке
+        const userSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `users/${userId}`)
+        );
+        
+        const user = userSnapshot.exists() ? userSnapshot.val() : { nickname: 'Неизвестно' };
+        const isCaptain = memberData.role === 'captain';
+        
+        membersHTML += `
+            <div class="team-member-edit" style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: var(--radius-medium);">
+                <div class="member-edit-info">
+                    <h4>${user.nickname || user.username || 'Неизвестно'} ${isCaptain ? '👑' : ''}</h4>
+                    <p>ID: ${userId} | MMR: ${memberData.mmr || 0} | Роль: ${isCaptain ? 'Капитан' : 'Участник'}</p>
+                    <p>Текущая позиция: ${memberData.position ? this.app.getPositionName(memberData.position) : 'Не указана'}</p>
+                </div>
+                <div class="member-edit-actions">
+                    <div class="form-group">
+                        <label>Новая позиция:</label>
+                        <select class="form-input admin-position-select" data-user-id="${userId}" style="margin-bottom: 10px;">
+                            <option value="">Не указана</option>
+                            <option value="carry" ${memberData.position === 'carry' ? 'selected' : ''}>Керри</option>
+                            <option value="mid" ${memberData.position === 'mid' ? 'selected' : ''}>Мидер</option>
+                            <option value="offlane" ${memberData.position === 'offlane' ? 'selected' : ''}>Оффлейнер</option>
+                            <option value="support4" ${memberData.position === 'support4' ? 'selected' : ''}>Саппорт 4</option>
+                            <option value="support5" ${memberData.position === 'support5' ? 'selected' : ''}>Саппорт 5</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="add-btn admin-position-btn" 
+                                data-team-id="${teamId}" 
+                                data-user-id="${userId}">
+                            💾 Сохранить позицию
+                        </button>
+                        ${!isCaptain ? `
+                            <button class="save-btn admin-role-btn" 
+                                    data-team-id="${teamId}" 
+                                    data-user-id="${userId}"
+                                    data-new-role="captain">
+                                👑 Сделать капитаном
+                            </button>
+                        ` : `
+                            <button class="cancel-btn admin-role-btn" 
+                                    data-team-id="${teamId}" 
+                                    data-user-id="${userId}"
+                                    data-new-role="member">
+                                👤 Сделать участником
+                            </button>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (membersHTML === '') {
+        membersHTML = '<div class="no-data">Нет участников в команде</div>';
+    }
+    
+    membersList.innerHTML = membersHTML;
+}
+
+// Обновим HTML для кнопки сохранения команды
+async editTeam(teamId) {
+    if (!this.checkPermissions('edit_teams')) return;
+    
+    const teamSnapshot = await this.app.firebase.get(this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`));
+    if (!teamSnapshot.exists()) {
+        alert('❌ Команда не найдена');
+        return;
+    }
+    
+    const team = teamSnapshot.val();
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>⚙️ Редактирование команды: ${team.name}</h2>
+                <button class="close-modal" onclick="closeAdminModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="adminTeamName">Название команды:</label>
+                    <input type="text" id="adminTeamName" class="form-input" value="${team.name}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminTeamSlogan">Слоган:</label>
+                    <input type="text" id="adminTeamSlogan" class="form-input" value="${team.slogan || ''}">
+                </div>
+                
+                <h3 style="color: var(--accent-primary); margin: 25px 0 15px 0;">👥 Управление позициями игроков</h3>
+                <div id="adminTeamMembersList">
+                    <!-- Список игроков с выбором позиций -->
+                </div>
+                
+                <div class="form-actions" style="margin-top: 25px;">
+                    <button class="save-btn" onclick="saveTeamChanges('${teamId}')">💾 Сохранить изменения команды</button>
+                    <button class="cancel-btn" onclick="closeAdminModal()">❌ Закрыть</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    await this.loadTeamMembersForAdminEdit(teamId, team);
+}
 
 async init() {
     try {
@@ -165,7 +438,10 @@ async init() {
         this.setupAdminEventListeners();
         this.setupDynamicEventListeners();
         
-        console.log('✅ Admin panel initialized');
+        // Делаем админ-панель доступной глобально
+        window.adminPanel = this;
+        
+        console.log('✅ Admin panel initialized and available globally');
     } catch (error) {
         console.error('❌ Admin panel init error:', error);
     }
@@ -989,6 +1265,146 @@ async sendUnbanNotification(userId) {
         }
     }
 
+    // Добавим в класс AdminPanel
+async changePlayerPosition(teamId, userId, newPosition) {
+    if (!this.checkPermissions('edit_teams')) return;
+    
+    try {
+        // Получаем информацию о команде
+        const teamSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`)
+        );
+        
+        if (!teamSnapshot.exists()) {
+            alert('❌ Команда не найдена');
+            return;
+        }
+        
+        const team = teamSnapshot.val();
+        
+        // Проверяем, что пользователь есть в команде
+        if (!team.members || !team.members[userId]) {
+            alert('❌ Игрок не найден в команде');
+            return;
+        }
+        
+        // Получаем информацию об игроке
+        const userSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `users/${userId}`)
+        );
+        
+        if (!userSnapshot.exists()) {
+            alert('❌ Пользователь не найден');
+            return;
+        }
+        
+        const user = userSnapshot.val();
+        const oldPosition = team.members[userId].position;
+        
+        // Проверяем, не занята ли уже эта позиция в команде
+        if (newPosition && newPosition !== '') {
+            const isPositionTaken = Object.values(team.members).some(member => 
+                member.position === newPosition && member.position !== ''
+            );
+            
+            if (isPositionTaken) {
+                alert(`❌ Позиция "${this.app.getPositionName(newPosition)}" уже занята в команде`);
+                return;
+            }
+        }
+        
+        // Обновляем позицию игрока в команде
+        await this.app.firebase.update(
+            this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}/members/${userId}`),
+            { position: newPosition }
+        );
+        
+        // Обновляем позицию в профиле пользователя
+        await this.app.firebase.update(
+            this.app.firebase.ref(this.app.firebase.database, `users/${userId}`),
+            { position: newPosition }
+        );
+        
+        // Отправляем уведомление игроку
+        await this.sendPositionChangeNotification(userId, teamId, newPosition, oldPosition);
+        
+        // Создаем новость о смене позиции
+        await this.createPositionChangeNews(userId, teamId, newPosition, oldPosition);
+        
+        const oldPosName = oldPosition ? this.app.getPositionName(oldPosition) : 'не указана';
+        const newPosName = newPosition ? this.app.getPositionName(newPosition) : 'не указана';
+        
+        alert(`✅ Позиция игрока изменена: ${oldPosName} → ${newPosName}`);
+        this.loadTeamsList();
+        
+    } catch (error) {
+        console.error('❌ Error changing player position:', error);
+        alert('❌ Ошибка изменения позиции игрока');
+    }
+}
+
+// Метод для отправки уведомления о смене позиции
+async sendPositionChangeNotification(userId, teamId, newPosition, oldPosition) {
+    try {
+        const teamSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`)
+        );
+        
+        if (!teamSnapshot.exists()) return;
+        
+        const team = teamSnapshot.val();
+        
+        const oldPosName = oldPosition ? this.app.getPositionName(oldPosition) : 'не указана';
+        const newPosName = newPosition ? this.app.getPositionName(newPosition) : 'не указана';
+        
+        const notificationId = `position_change_${Date.now()}`;
+        const notificationData = {
+            type: 'position_changed',
+            message: `В команде "${team.name}" ваша позиция изменена: ${oldPosName} → ${newPosName}`,
+            teamId: teamId,
+            teamName: team.name,
+            oldPosition: oldPosition,
+            newPosition: newPosition,
+            timestamp: Date.now(),
+            read: false,
+            from: 'Система администрирования'
+        };
+        
+        await this.app.firebase.set(
+            this.app.firebase.ref(this.app.firebase.database, `notifications/${userId}/${notificationId}`),
+            notificationData
+        );
+        
+    } catch (error) {
+        console.error('❌ Error sending position change notification:', error);
+    }
+}
+
+// Метод для создания новости о смене позиции
+async createPositionChangeNews(userId, teamId, newPosition, oldPosition) {
+    try {
+        const [user, team] = await Promise.all([
+            this.app.getUserProfile(userId),
+            this.app.getTeamInfo(teamId)
+        ]);
+        
+        if (user && team) {
+            const oldPosName = oldPosition ? this.app.getPositionName(oldPosition) : 'не указана';
+            const newPosName = newPosition ? this.app.getPositionName(newPosition) : 'не указана';
+            
+            await this.app.createNews('team-change', {
+                playerName: user.nickname || user.username,
+                playerId: userId,
+                teamName: team.name,
+                teamId: teamId,
+                message: `В команде "${team.name}" игрок ${user.nickname} сменил позицию: ${oldPosName} → ${newPosName}`
+            });
+        }
+    } catch (error) {
+        console.error('❌ Error creating position change news:', error);
+    }
+}
+
     async editUserProfile(userId) {
         if (!this.checkPermissions('edit_users')) return;
         
@@ -1014,35 +1430,113 @@ async sendUnbanNotification(userId) {
         }
     }
 
-    async editTeam(teamId) {
-        if (!this.checkPermissions('edit_teams')) return;
+
+
+// Метод для загрузки списка игроков с выбором позиций
+async loadTeamMembersForAdminEdit(teamId, team) {
+    const membersList = document.getElementById('adminTeamMembersList');
+    
+    let membersHTML = '';
+    
+    for (const [userId, memberData] of Object.entries(team.members || {})) {
+        // Получаем информацию об игроке
+        const userSnapshot = await this.app.firebase.get(
+            this.app.firebase.ref(this.app.firebase.database, `users/${userId}`)
+        );
         
-        const teamSnapshot = await this.app.firebase.get(this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`));
-        if (!teamSnapshot.exists()) {
-            alert('❌ Команда не найдена');
+        const user = userSnapshot.exists() ? userSnapshot.val() : { nickname: 'Неизвестно' };
+        const isCaptain = memberData.role === 'captain';
+        
+        membersHTML += `
+            <div class="team-member-edit" style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: var(--radius-medium);">
+                <div class="member-edit-info">
+                    <h4>${user.nickname || user.username || 'Неизвестно'} ${isCaptain ? '👑' : ''}</h4>
+                    <p>ID: ${userId} | MMR: ${memberData.mmr || 0} | Роль: ${isCaptain ? 'Капитан' : 'Участник'}</p>
+                    <p>Текущая позиция: ${memberData.position ? this.app.getPositionName(memberData.position) : 'Не указана'}</p>
+                </div>
+                <div class="member-edit-actions">
+                    <div class="form-group">
+                        <label>Новая позиция:</label>
+                        <select class="form-input admin-position-select" data-user-id="${userId}" style="margin-bottom: 10px;">
+                            <option value="">Не указана</option>
+                            <option value="carry" ${memberData.position === 'carry' ? 'selected' : ''}>Керри</option>
+                            <option value="mid" ${memberData.position === 'mid' ? 'selected' : ''}>Мидер</option>
+                            <option value="offlane" ${memberData.position === 'offlane' ? 'selected' : ''}>Оффлейнер</option>
+                            <option value="support4" ${memberData.position === 'support4' ? 'selected' : ''}>Саппорт 4</option>
+                            <option value="support5" ${memberData.position === 'support5' ? 'selected' : ''}>Саппорт 5</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="add-btn admin-position-btn" 
+                                onclick="changePlayerPosition('${teamId}', '${userId}')">
+                            💾 Сохранить позицию
+                        </button>
+                        ${!isCaptain ? `
+                            <button class="save-btn admin-role-btn" 
+                                    onclick="changePlayerRole('${teamId}', '${userId}', 'captain')">
+                                👑 Сделать капитаном
+                            </button>
+                        ` : `
+                            <button class="cancel-btn admin-role-btn" 
+                                    onclick="changePlayerRole('${teamId}', '${userId}', 'member')">
+                                👤 Сделать участником
+                            </button>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (membersHTML === '') {
+        membersHTML = '<div class="no-data">Нет участников в команде</div>';
+    }
+    
+    membersList.innerHTML = membersHTML;
+}
+
+// Метод для быстрого изменения позиции через селект
+async changePlayerPositionFromSelect(teamId, userId) {
+    const selectElement = document.querySelector(`.admin-position-select[data-user-id="${userId}"]`);
+    if (!selectElement) return;
+    
+    const newPosition = selectElement.value;
+    await this.changePlayerPosition(teamId, userId, newPosition);
+}
+
+// Обновленный метод для сохранения изменений команды
+async saveTeamChanges(teamId) {
+    try {
+        const newName = document.getElementById('adminTeamName').value.trim();
+        const newSlogan = document.getElementById('adminTeamSlogan').value.trim();
+        
+        if (!newName) {
+            alert('❌ Введите название команды');
             return;
         }
         
-        const team = teamSnapshot.val();
-        const newName = prompt('Новое название команды:', team.name);
-        if (newName === null) return;
+        const updateData = {
+            name: newName,
+            slogan: newSlogan,
+            updatedAt: Date.now()
+        };
         
-        const newSlogan = prompt('Новый слоган:', team.slogan || '');
+        await this.app.firebase.update(
+            this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`),
+            updateData
+        );
         
-        try {
-            await this.app.firebase.update(this.app.firebase.ref(this.app.firebase.database, `teams/${teamId}`), {
-                name: newName,
-                slogan: newSlogan,
-                updatedAt: Date.now()
-            });
-            
-            alert('✅ Команда обновлена');
-            this.loadTeamsList();
-        } catch (error) {
-            console.error('❌ Error editing team:', error);
-            alert('❌ Ошибка редактирования команды');
-        }
+        // Закрываем модальное окно
+        document.querySelector('.modal').remove();
+        
+        alert('✅ Изменения команды сохранены!');
+        this.loadTeamsList();
+        
+    } catch (error) {
+        console.error('❌ Error saving team changes:', error);
+        alert('❌ Ошибка сохранения изменений');
     }
+}
 
     async systemBroadcast() {
         if (!this.checkPermissions('broadcast')) return;
@@ -1100,3 +1594,67 @@ document.addEventListener('DOMContentLoaded', function() {
     // Будет инициализирована после загрузки основного приложения
     console.log('📄 Admin panel DOM ready');
 });
+
+// В конец файла admin-panel.js добавить:
+// Глобальные методы для HTML
+window.changePlayerPosition = (teamId, userId) => {
+    if (adminPanel) {
+        const selectElement = document.querySelector(`.admin-position-select[data-user-id="${userId}"]`);
+        if (selectElement) {
+            adminPanel.changePlayerPosition(teamId, userId, selectElement.value);
+        }
+    }
+};
+
+window.changePlayerRole = (teamId, userId, newRole) => {
+    if (adminPanel) {
+        adminPanel.changePlayerRole(teamId, userId, newRole);
+    }
+};
+
+window.saveTeamChanges = (teamId) => {
+    if (adminPanel) {
+        adminPanel.saveTeamChanges(teamId);
+    }
+};
+
+// === ГЛОБАЛЬНЫЕ МЕТОДЫ ДЛЯ HTML ===
+// Добавить в самый конец файла admin-panel.js
+
+// Глобальная функция для изменения позиции игрока
+window.changePlayerPosition = function(teamId, userId) {
+    if (window.adminPanel && window.adminPanel.changePlayerPositionFromButton) {
+        window.adminPanel.changePlayerPositionFromButton(teamId, userId);
+    } else {
+        console.error('❌ Admin panel not initialized');
+        alert('❌ Система администрирования не инициализирована');
+    }
+};
+
+// Глобальная функция для изменения роли игрока
+window.changePlayerRole = function(teamId, userId, newRole) {
+    if (window.adminPanel && window.adminPanel.changePlayerRole) {
+        window.adminPanel.changePlayerRole(teamId, userId, newRole);
+    } else {
+        console.error('❌ Admin panel not initialized');
+        alert('❌ Система администрирования не инициализирована');
+    }
+};
+
+// Глобальная функция для сохранения изменений команды
+window.saveTeamChanges = function(teamId) {
+    if (window.adminPanel && window.adminPanel.saveTeamChanges) {
+        window.adminPanel.saveTeamChanges(teamId);
+    } else {
+        console.error('❌ Admin panel not initialized');
+        alert('❌ Система администрирования не инициализирована');
+    }
+};
+
+// Глобальная функция для закрытия модальных окон
+window.closeAdminModal = function() {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
+    }
+};
