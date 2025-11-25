@@ -211,6 +211,14 @@ handleDynamicClick(e) {
             this.saveTeamChanges(teamId);
         }
     }
+
+// В метод handleDynamicClick добавьте:
+if (target.classList.contains('holiday-toggle-btn') || target.closest('.holiday-toggle-btn')) {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🎄 Holiday toggle button clicked');
+    this.toggleHolidayTheme();
+}
 }
 
 // Обработчик изменений для динамических элементов
@@ -404,6 +412,124 @@ async editTeam(teamId) {
     
     document.body.appendChild(modal);
     await this.loadTeamMembersForAdminEdit(teamId, team);
+}
+
+// УДАЛИТЬ(ОБНОВЛЕНИЕ НОВЫЙ ГОД до фуекции инит):
+async toggleGlobalHolidayTheme() {
+    if (!this.checkPermissions('system')) return;
+    
+    try {
+        // Получаем текущее состояние
+        const themeRef = firebase.database().ref('systemSettings/holidayThemeEnabled');
+        const snapshot = await themeRef.get();
+        const currentState = snapshot.exists() ? snapshot.val() : false;
+        const newState = !currentState;
+        
+        // Сохраняем в Firebase
+        await themeRef.set(newState);
+        
+        alert(newState ? 
+            '🎄 Новогодняя тема ВКЛЮЧЕНА для всех пользователей!' : 
+            '❄️ Новогодняя тема ВЫКЛЮЧЕНА для всех пользователей!'
+        );
+        
+    } catch (error) {
+        console.error('❌ Error toggling global theme:', error);
+        alert('❌ Ошибка переключения глобальной темы');
+    }
+}
+
+// Добавьте этот метод в класс AdminPanel
+async toggleHolidayTheme() {
+    if (!this.checkPermissions('system')) return;
+    
+    try {
+        console.log('🎄 Toggling global holiday theme...');
+        
+        // Получаем текущее состояние из Firebase
+        const themeRef = firebase.database().ref('systemSettings/holidayThemeEnabled');
+        const snapshot = await themeRef.get();
+        const currentState = snapshot.exists() ? snapshot.val() : false;
+        const newState = !currentState;
+        
+        // Сохраняем новое состояние в Firebase
+        await themeRef.set(newState);
+        
+        // Обновляем статус в UI
+        this.updateHolidayThemeStatus(newState);
+        
+        alert(newState ? 
+            '🎄 Новогодняя тема ВКЛЮЧЕНА для всех пользователей!' : 
+            '❄️ Новогодняя тема ВЫКЛЮЧЕНА для всех пользователей!'
+        );
+        
+        console.log('🎄 Theme toggled successfully:', newState);
+        
+    } catch (error) {
+        console.error('❌ Error toggling global theme:', error);
+        alert('❌ Ошибка переключения глобальной темы: ' + error.message);
+    }
+}
+
+// Добавьте вспомогательный метод для обновления статуса
+updateHolidayThemeStatus(isEnabled) {
+    const statusElement = document.getElementById('holidayThemeStatus');
+    const button = document.querySelector('.holiday-toggle-btn');
+    
+    if (statusElement) {
+        statusElement.textContent = isEnabled ? '✅ ВКЛЮЧЕНО ДЛЯ ВСЕХ' : '❌ ВЫКЛЮЧЕНО';
+        statusElement.style.color = isEnabled ? 'var(--accent-success)' : 'var(--accent-danger)';
+    }
+    
+    if (button) {
+        button.textContent = isEnabled ? '🎄 Выключить для всех' : '🎄 Включить для всех';
+    }
+}
+
+// В метод switchAdminTab добавьте кнопку в системную вкладку:
+loadSystemControls() {
+    const systemTab = document.getElementById('systemTab');
+    if (!systemTab) {
+        console.error('❌ systemTab not found');
+        return;
+    }
+    
+    console.log('🔄 Loading system controls...');
+    
+    // Удаляем старые контролы если есть
+    const oldControls = systemTab.querySelector('.holiday-controls');
+    if (oldControls) oldControls.remove();
+    
+    // Получаем текущий статус темы
+    const isEnabled = window.holidayTheme ? window.holidayTheme.isEnabled : false;
+    
+    const holidayControls = `
+        <div class="holiday-controls" style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: var(--radius-medium);">
+            <h3 style="color: var(--accent-primary); margin-bottom: 15px;">🎄 Глобальное управление темой</h3>
+            <div class="admin-item">
+                <div class="admin-item-info">
+                    <h4 style="color: gold;">Новогоднее чудо</h4>
+                    <p>Праздничное оформление для всех пользователей сайта</p>
+                    <p style="color: var(--text-secondary); font-size: 0.9em; margin-top: 5px;">
+                        <strong>Статус:</strong> 
+                        <span id="holidayThemeStatus" style="color: ${isEnabled ? 'var(--accent-success)' : 'var(--accent-danger)'};">
+                            ${isEnabled ? '✅ ВКЛЮЧЕНО ДЛЯ ВСЕХ' : '❌ ВЫКЛЮЧЕНО'}
+                        </span>
+                    </p>
+                </div>
+                <div class="admin-item-actions">
+                    <button class="admin-action-btn holiday-toggle-btn" 
+                            data-action="toggle-global-holiday-theme"
+                            style="background: linear-gradient(45deg, #ff6b6b, #4ecdc4); color: white; border: none; padding: 10px 15px;">
+                        🎄 ${isEnabled ? 'Выключить для всех' : 'Включить для всех'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    systemTab.insertAdjacentHTML('afterbegin', holidayControls);
+    console.log('✅ Holiday controls added to system tab');
 }
 
 async init() {
@@ -631,6 +757,7 @@ createFallbackAdminStructure() {
                 break;
             case 'system':
                 this.loadAdminsList();
+                this.loadSystemControls(); // ← ДОБАВЬТЕ ЭТУ СТРОЧКУ
                 break;
         }
     }
@@ -1656,5 +1783,23 @@ window.closeAdminModal = function() {
     const modal = document.querySelector('.modal');
     if (modal) {
         modal.remove();
+    }
+};
+
+// Глобальная функция для переключения темы
+window.toggleHolidayTheme = function() {
+    console.log('🎄 Global toggle function called');
+    if (window.adminPanel && typeof window.adminPanel.toggleHolidayTheme === 'function') {
+        window.adminPanel.toggleHolidayTheme();
+    } else if (window.holidayTheme) {
+        // Альтернативный способ если adminPanel недоступен
+        if (window.holidayTheme.isEnabled) {
+            window.holidayTheme.disable();
+        } else {
+            window.holidayTheme.enable();
+        }
+    } else {
+        console.error('❌ Cannot toggle holiday theme: adminPanel or holidayTheme not available');
+        alert('❌ Невозможно переключить тему. Обновите страницу.');
     }
 };
