@@ -719,7 +719,7 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
 
 <script>
     // РУЧНАЯ НАСТРОЙКА ВЕРСИИ ПАТЧА - МЕНЯЙТЕ ЗДЕСЬ 👇
-    const MANUAL_PATCH_VERSION = "1.03a";
+    const MANUAL_PATCH_VERSION = "1.04";
     
     document.addEventListener('DOMContentLoaded', function() {
         const patchElement = document.getElementById('patchNumber');
@@ -742,6 +742,56 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
 </script>
 
 <script src="holiday-theme.js"></script>
+<!-- 1.04 -->
+<!-- Кнопка обратной связи -->
+<div id="feedbackBtn" class="feedback-btn">
+    <span class="feedback-icon">🐛</span>
+    <span class="feedback-text">Баги и предложения</span>
+</div>
+
+<!-- Модальное окно обратной связи -->
+<div id="feedbackModal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🐛 Обратная связь</h2>
+            <button class="close-modal" id="closeFeedbackModal">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="feedback-content">
+                <div class="feedback-section">
+                    <h3>Нашли баг?</h3>
+                    <p>Сообщите нам в Telegram:</p>
+                    <a href="https://t.me/grem1in3" target="_blank" class="telegram-link">
+                        <span class="tg-icon">✈️</span>
+                        @grem1in3
+                    </a>
+                </div>
+                
+                <div class="feedback-section">
+                    <h3>Есть предложения?</h3>
+                    <p>Мы всегда рады улучшениям! Напишите нам:</p>
+                    <a href="https://t.me/grem1in3" target="_blank" class="telegram-link">
+                        <span class="tg-icon">💡</span>
+                        @grem1in3
+                    </a>
+                </div>
+                
+                <div class="feedback-section">
+                    <h3>Хотите помочь?</h3>
+                    <p>Присоединяйтесь к разработке:</p>
+                    <a href="https://t.me/grem1in3" target="_blank" class="telegram-link">
+                        <span class="tg-icon">👨‍💻</span>
+                        @grem1in3
+                    </a>
+                </div>
+            </div>
+            
+            <div class="feedback-footer">
+                <p><small>Мы ответим в течение 24 часов</small></p>
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

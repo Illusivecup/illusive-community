@@ -137,7 +137,7 @@ class IllusiveApp {
         };
     }
 
-initAdminPanel() {
+/* initAdminPanel() {
     try {
         // Проверяем, что файл админ-панели загружен
         if (typeof AdminPanel === 'undefined') {
@@ -169,6 +169,8 @@ initAdminPanel() {
         console.error('❌ Error initializing admin panel:', error);
     }
 }
+*/
+
 
     // ДОБАВЬТЕ ЭТОТ МЕТОД
     async init() {
@@ -2592,6 +2594,62 @@ if (matchesBtn) {
     });
     
     console.log('✅ Обработчики событий настроены');
+// 1.04
+        // === ОБРАТНАЯ СВЯЗЬ ===
+    const feedbackBtn = document.getElementById('feedbackBtn');
+    const closeFeedbackModal = document.getElementById('closeFeedbackModal');
+    const feedbackModal = document.getElementById('feedbackModal');
+    
+    if (feedbackBtn) {
+        feedbackBtn.addEventListener('click', openFeedbackModal);
+    }
+    
+    if (closeFeedbackModal) {
+        closeFeedbackModal.addEventListener('click', closeFeedbackModalFunc);
+    }
+    
+    if (feedbackModal) {
+        feedbackModal.addEventListener('click', function(event) {
+            if (event.target === feedbackModal) {
+                closeFeedbackModalFunc();
+            }
+        });
+    }
+
+    // Добавьте функции для управления модальным окном
+function openFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        // Анимация появления
+        setTimeout(() => {
+            modal.style.opacity = '0';
+            modal.style.transition = 'opacity 0.3s ease';
+            modal.style.opacity = '1';
+        }, 50);
+    }
+}
+
+function closeFeedbackModalFunc() {
+    const modal = document.getElementById('feedbackModal');
+    if (modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+}
+
+// Добавьте обработку Escape для закрытия
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const feedbackModal = document.getElementById('feedbackModal');
+        if (feedbackModal && !feedbackModal.classList.contains('hidden')) {
+            closeFeedbackModalFunc();
+        }
+    }
+});
+
 }
 
 
@@ -3692,8 +3750,8 @@ document.addEventListener('DOMContentLoaded', async function() {  // ДОБАВ�
     
     setTimeout(async () => {  // ДОБАВЛЕНО async
         console.log('🔍 Проверка элементов навигации:');
-        console.log('- teamsListBtn:', document.getElementById('teamsListBtn'));
-        console.log('- editTeamBtn:', document.getElementById('editTeamBtn'));
+//        console.log('- teamsListBtn:', document.getElementById('teamsListBtn'));
+//        console.log('- editTeamBtn:', document.getElementById('editTeamBtn'));
         console.log('- firebase loaded:', !!window.firebase);
         
         try {
